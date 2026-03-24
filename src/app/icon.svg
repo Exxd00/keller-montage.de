@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="32" height="32">
+  <!-- Red background for favicon visibility -->
+  <rect width="100" height="100" fill="#E84C5C"/>
+
+  <!-- White K shape cut-out effect -->
+  <rect x="8" y="0" width="14" height="100" fill="white"/>
+
+  <!-- K diagonal cuts in white -->
+  <polygon points="30,42 30,58 55,52 100,100 100,80 65,48 100,8 100,0 55,48" fill="white"/>
+</svg>

@@ -1,0 +1,27 @@
+# Robots.txt for keller-montage.de
+# https://keller-montage.de
+
+User-agent: *
+Allow: /
+
+# Disallow admin and private pages
+Disallow: /admin
+Disallow: /api/
+Disallow: /_next/
+Disallow: /thank-you
+
+# Sitemaps
+Sitemap: https://keller-montage.de/sitemap.xml
+
+# Crawl-delay for respectful crawling
+Crawl-delay: 1
+
+# Google specific
+User-agent: Googlebot
+Allow: /
+Disallow: /admin
+
+# Bing specific
+User-agent: Bingbot
+Allow: /
+Disallow: /admin

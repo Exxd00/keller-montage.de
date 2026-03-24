@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Background matching website light mode -->
+  <rect width="100" height="100" fill="#FCFAF8"/>
+
+  <!-- Left vertical bar -->
+  <rect x="8" y="0" width="14" height="100" fill="#E84C5C"/>
+
+  <!-- Main rectangle with K cut-out -->
+  <path d="
+    M 30 0
+    L 100 0
+    L 100 100
+    L 30 100
+    Z
+    M 30 42
+    L 30 58
+    L 55 52
+    L 100 100
+    L 100 80
+    L 65 48
+    L 100 8
+    L 100 0
+    L 55 48
+    L 30 42
+    Z
+  " fill="#E84C5C" fill-rule="evenodd"/>
+</svg>
