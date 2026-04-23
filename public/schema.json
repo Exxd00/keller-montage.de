@@ -1,0 +1,177 @@
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "LocalBusiness",
+      "@id": "https://keller-montage.de/#business",
+      "name": "KELLER – DIE KÜCHENWELT",
+      "alternateName": "Keller Küchenwelt",
+      "description": "Professionelle Küchenmontage in Nürnberg und Umgebung. IKEA METOD Spezialist, Möbelmontage und Lieferung zum Festpreis.",
+      "url": "https://keller-montage.de",
+      "logo": "https://keller-montage.de/logo_day_mode_corrected.png",
+      "image": "https://keller-montage.de/images/hero-desktop.jpg",
+      "telephone": "+4991189314510",
+      "email": "info@keller-montage.de",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Hans Bunte Straße 26",
+        "addressLocality": "Nürnberg",
+        "postalCode": "90431",
+        "addressRegion": "Bayern",
+        "addressCountry": "DE"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": "49.4521",
+        "longitude": "11.0767"
+      },
+      "openingHoursSpecification": [
+        {
+          "@type": "OpeningHoursSpecification",
+          "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+          "opens": "10:00",
+          "closes": "18:00"
+        }
+      ],
+      "priceRange": "€€",
+      "currenciesAccepted": "EUR",
+      "paymentAccepted": "Cash, Bank Transfer, Invoice",
+      "areaServed": [
+        {
+          "@type": "City",
+          "name": "Nürnberg"
+        },
+        {
+          "@type": "City",
+          "name": "Fürth"
+        },
+        {
+          "@type": "City",
+          "name": "Erlangen"
+        },
+        {
+          "@type": "City",
+          "name": "Schwabach"
+        }
+      ],
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "5.0",
+        "reviewCount": "120",
+        "bestRating": "5",
+        "worstRating": "1"
+      },
+      "sameAs": [
+        "https://maps.app.goo.gl/VMtxaGySYfnDoTZL9"
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://keller-montage.de/#website",
+      "url": "https://keller-montage.de",
+      "name": "KELLER – DIE KÜCHENWELT",
+      "description": "Professionelle Küchenmontage in Nürnberg",
+      "publisher": {
+        "@id": "https://keller-montage.de/#business"
+      },
+      "inLanguage": "de-DE"
+    },
+    {
+      "@type": "Service",
+      "@id": "https://keller-montage.de/#kuechenmontage",
+      "name": "Küchenmontage",
+      "description": "Komplette Kücheninstallation inkl. Arbeitsplatten, Geräte, Wasser & Elektro Anschluss",
+      "provider": {
+        "@id": "https://keller-montage.de/#business"
+      },
+      "areaServed": {
+        "@type": "GeoCircle",
+        "geoMidpoint": {
+          "@type": "GeoCoordinates",
+          "latitude": "49.4521",
+          "longitude": "11.0767"
+        },
+        "geoRadius": "100000"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "149",
+        "priceCurrency": "EUR",
+        "priceSpecification": {
+          "@type": "PriceSpecification",
+          "price": "149",
+          "priceCurrency": "EUR",
+          "valueAddedTaxIncluded": true
+        }
+      }
+    },
+    {
+      "@type": "Service",
+      "@id": "https://keller-montage.de/#moebelmontage",
+      "name": "Möbelmontage",
+      "description": "IKEA, PAX, Betten, Schränke und weitere Möbel professionell montiert",
+      "provider": {
+        "@id": "https://keller-montage.de/#business"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "59",
+        "priceCurrency": "EUR"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://keller-montage.de/#breadcrumb",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://keller-montage.de/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Leistungen",
+          "item": "https://keller-montage.de/leistungen"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Kontakt",
+          "item": "https://keller-montage.de/kontakt"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://keller-montage.de/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Was kostet die Küchenmontage?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Unsere Küchenmontage startet ab 149€. Sie erhalten immer ein verbindliches Festpreis-Angebot ohne versteckte Zusatzkosten."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Wie schnell bekomme ich einen Termin?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "In der Regel innerhalb von 24-48 Stunden – auch am Wochenende. Für dringende Küchenmontagen bieten wir Express-Termine an."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Montieren Sie IKEA Küchen?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Ja, wir sind spezialisiert auf IKEA METOD Küchen. Wir übernehmen die komplette Montage inkl. Arbeitsplatten-Anpassung und Geräteinstallation."
+          }
+        }
+      ]
+    }
+  ]
+}
