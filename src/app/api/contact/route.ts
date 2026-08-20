@@ -1,947 +1,544 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
-import { createClient } from "@supabase/supabase-js";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-const CONTACT_EMAIL = process.env.CONTACT_EMAIL || "info@keller-montage.de";
-const GOOGLE_SHEETS_URL = process.env.GOOGLE_SHEETS_URL;
-const IMGBB_API_KEY = process.env.IMGBB_API_KEY;
-
-// Supabase configuration
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "form-uploads";
-
-// Create Supabase client with service role for server-side uploads
-function getSupabaseAdmin() {
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    console.error("❌ Supabase credentials not configured");
-    return null;
-  }
-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-}
-
-// Send data to Google Sheets (text only, no images)
-async function sendToGoogleSheets(data: ContactFormData, gclid?: string, source?: string): Promise<boolean> {
-  if (!GOOGLE_SHEETS_URL) {
-    console.log("GOOGLE_SHEETS_URL not set, skipping Google Sheets");
-    return false;
-  }
-  try {
-    // Format data for Google Sheets with contact type
-    const sheetsData = {
-      name: data.name,
-      phone: data.phone,
-      email: data.email,
-      city: data.city,
-      service: data.service,
-      message: data.message,
-      contact_type: "📝 Formular", // Always form submission from API
-      source: source || "Direct",
-      gclid: gclid || "-",
-      page_url: "keller-montage.de/kontakt",
-    };
-
-    const response = await fetch(GOOGLE_SHEETS_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(sheetsData),
-    });
-    const result = await response.json();
-    console.log("Google Sheets response:", result);
-    return result.success === true;
-  } catch (error) {
-    console.error("Error sending to Google Sheets:", error);
-    return false;
-  }
+interface FileAttachment {
+  filename: string;
+  content: string; // base64
 }
 
 interface ContactFormData {
+  submissionId: string;
   service: string;
-  urgency: string;
-  timeframe: string;
-  timeOfDay: string;
-  brand: string;
-  kitchenShape: string;
-  cabinetCount: string;
-  appliances: string;
-  hasOldKitchen: string;
-  oldKitchenAction: string;
-  hasWaterSystem: string;
-  hasMuldenluefter: string;
-  kitchenAtCustomer: string;
-  needsPickup: string;
-  pickupLocationName: string;
-  countertopType: string;
-  kitchenCondition: string;
-  needsWater: string;
-  needsElectric: string;
-  needsCountertop: string;
-  furnitureType: string;
-  furnitureBrand: string;
-  itemCount: string;
-  pickupLocation: string;
-  floor: string;
-  hasElevator: string;
-  itemSize: string;
-  parking: string;
-  accessDifficulty: string;
-  message: string;
-  anrede: string;
   name: string;
-  phone: string;
   email: string;
-  city: string;
+  phone: string;
+  plz: string;
+  message: string;
+  fileUrls: string[]; // Image URLs (from imgbb)
+  fileAttachments?: FileAttachment[]; // PDF/DOC files as base64
+  serviceDetails?: Record<string, string>;
+  gclid?: string | null;
+  quelle?: string;
+  seite?: string;
 }
 
-interface UploadedFile {
-  url: string;
-  thumb: string;
-  fileName: string;
-  fileType: "image" | "document";
-}
-
-// Upload timeout in milliseconds (15 seconds per file)
-const UPLOAD_TIMEOUT = 15000;
-
-// Helper function to create a timeout promise
-function createTimeout(ms: number): Promise<never> {
-  return new Promise((_, reject) => {
-    setTimeout(() => reject(new Error(`Upload timeout after ${ms}ms`)), ms);
-  });
-}
-
-// Check if file is an image
-function isImageFile(file: File): boolean {
-  return file.type.startsWith("image/");
-}
-
-// Upload image to ImgBB
-async function uploadToImgBB(file: File): Promise<UploadedFile | null> {
-  if (!IMGBB_API_KEY) {
-    console.error("❌ IMGBB_API_KEY is not set in environment variables!");
-    return null;
-  }
-
-  try {
-    console.log(`🔄 Starting ImgBB upload for: ${file.name} (${file.size} bytes)`);
-
-    // Convert file to base64
-    const arrayBuffer = await file.arrayBuffer();
-    const base64 = Buffer.from(arrayBuffer).toString("base64");
-
-    // Use URLSearchParams for reliable encoding with ImgBB API
-    const params = new URLSearchParams();
-    params.append("key", IMGBB_API_KEY);
-    params.append("image", base64);
-    params.append("name", file.name.replace(/\.[^/.]+$/, "")); // Remove extension
-
-    const uploadPromise = fetch("https://api.imgbb.com/1/upload", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: params.toString(),
-    });
-
-    const response = await Promise.race([
-      uploadPromise,
-      createTimeout(UPLOAD_TIMEOUT),
-    ]);
-
-    const result = await response.json();
-
-    if (result.success) {
-      console.log(`✅ ImgBB upload success: ${result.data.url}`);
-      return {
-        url: result.data.url,
-        thumb: result.data.thumb?.url || result.data.url,
-        fileName: file.name,
-        fileType: "image",
-      };
-    } else {
-      console.error("❌ ImgBB upload failed:", JSON.stringify(result, null, 2));
-      return null;
-    }
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("timeout")) {
-      console.error(`⏱️ ImgBB upload timeout for ${file.name}`);
-    } else {
-      console.error("❌ Error uploading to ImgBB:", error);
-    }
-    return null;
-  }
-}
-
-// Upload document (PDF, etc.) to Supabase Storage
-async function uploadToSupabase(file: File): Promise<UploadedFile | null> {
-  const supabase = getSupabaseAdmin();
-  if (!supabase) {
-    console.error("❌ Supabase client not available");
-    return null;
-  }
-
-  try {
-    console.log(`🔄 Starting Supabase upload for: ${file.name} (${file.size} bytes)`);
-
-    // Generate unique filename with timestamp and random string
-    const timestamp = Date.now();
-    const randomStr = Math.random().toString(36).substring(2, 8);
-    const extension = file.name.split(".").pop() || "pdf";
-    const sanitizedName = file.name
-      .replace(/\.[^/.]+$/, "")
-      .replace(/[^a-zA-Z0-9-_]/g, "_")
-      .substring(0, 50);
-    const uniqueFileName = `${timestamp}_${randomStr}_${sanitizedName}.${extension}`;
-    const filePath = `documents/${uniqueFileName}`;
-
-    // Convert File to ArrayBuffer for upload
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = new Uint8Array(arrayBuffer);
-
-    // Upload with timeout
-    const uploadPromise = supabase.storage
-      .from(STORAGE_BUCKET)
-      .upload(filePath, buffer, {
-        contentType: file.type,
-        cacheControl: "3600",
-        upsert: false,
-      });
-
-    const { data, error } = await Promise.race([
-      uploadPromise,
-      createTimeout(UPLOAD_TIMEOUT),
-    ]) as Awaited<typeof uploadPromise>;
-
-    if (error) {
-      console.error(`❌ Supabase upload error for ${file.name}:`, error.message);
-      return null;
-    }
-
-    if (!data?.path) {
-      console.error(`❌ No path returned for ${file.name}`);
-      return null;
-    }
-
-    // Get public URL
-    const { data: publicUrlData } = supabase.storage
-      .from(STORAGE_BUCKET)
-      .getPublicUrl(data.path);
-
-    const publicUrl = publicUrlData.publicUrl;
-    console.log(`✅ Supabase upload success: ${publicUrl}`);
-
-    return {
-      url: publicUrl,
-      thumb: publicUrl,
-      fileName: file.name,
-      fileType: "document",
-    };
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("timeout")) {
-      console.error(`⏱️ Upload timeout for ${file.name}`);
-    } else {
-      console.error(`❌ Error uploading ${file.name} to Supabase:`, error);
-    }
-    return null;
-  }
-}
-
-// Map service values to readable names
-const serviceNames: Record<string, string> = {
-  kuechenmontage: "Küchenmontage",
+const SERVICE_NAMES: Record<string, string> = {
+  lieferungen: "Lieferungen",
   moebelmontage: "Möbelmontage",
-  lieferung: "Lieferung / Transport",
-  "lieferung-montage": "Lieferung + Montage",
-  sonstiges: "Sonstiges",
+  kuechenmontage: "Küchenmontage",
+  umzuege: "Umzüge",
+  entruempelung: "Entrümpelung",
 };
 
-const urgencyNames: Record<string, string> = {
-  express: "Dringend (Express)",
-  normal: "Normal",
-  flexibel: "Flexibel",
-};
-
-const timeframeNames: Record<string, string> = {
-  "diese-woche": "Diese Woche",
-  "naechste-woche": "Nächste Woche",
-  "2-wochen": "In 2 Wochen",
-  monat: "Innerhalb eines Monats",
-  spaeter: "Später / Flexibel",
-};
-
-const anredeNames: Record<string, string> = {
-  herr: "Herr",
-  frau: "Frau",
-  divers: "Divers",
-  keine: "",
-};
-
-function formatFormData(data: ContactFormData, uploadedFiles: UploadedFile[]): string {
-  const sections: string[] = [];
-  const images = uploadedFiles.filter(f => f.fileType === "image");
-  const documents = uploadedFiles.filter(f => f.fileType === "document");
-
-  // Header
-  sections.push(`
-╔══════════════════════════════════════════════════════════════╗
-║           NEUE ANFRAGE VON KELLER-MONTAGE.DE                  ║
-╚══════════════════════════════════════════════════════════════╝
-`);
-
-  // Personal Info
-  const anredeText = anredeNames[data.anrede] || "";
-  sections.push(`
-┌─────────────────────────────────────────────────────────────┐
-│ KONTAKTDATEN                                                  │
-└─────────────────────────────────────────────────────────────┘
-  Name:      ${anredeText} ${data.name}
-  Telefon:   ${data.phone}
-  E-Mail:    ${data.email || "Nicht angegeben"}
-  Stadt:     ${data.city}
-`);
-
-  // Service Info
-  sections.push(`
-┌─────────────────────────────────────────────────────────────┐
-│ DIENSTLEISTUNG                                               │
-└─────────────────────────────────────────────────────────────┘
-  Art:        ${serviceNames[data.service] || data.service}
-  Dringend:   ${urgencyNames[data.urgency] || data.urgency || "Nicht angegeben"}
-  Zeitraum:   ${timeframeNames[data.timeframe] || data.timeframe || "Nicht angegeben"}
-  Tageszeit:  ${data.timeOfDay || "Nicht angegeben"}
-`);
-
-  // Kitchen specific details
-  if (data.service === "kuechenmontage") {
-    sections.push(`
-┌─────────────────────────────────────────────────────────────┐
-│ KÜCHEN-DETAILS                                                │
-└─────────────────────────────────────────────────────────────┘
-  Marke:           ${data.brand || "Nicht angegeben"}
-  Küchenform:      ${data.kitchenShape || "Nicht angegeben"}
-  Anzahl Schränke: ${data.cabinetCount || "Nicht angegeben"}
-  Geräte:          ${data.appliances || "Keine angegeben"}
-
-  Alte Küche:      ${data.hasOldKitchen === "ja" ? "Ja" : data.hasOldKitchen === "nein" ? "Nein" : "Nicht angegeben"}
-  ${data.hasOldKitchen === "ja" ? `  → Aktion:        ${data.oldKitchenAction || "Nicht angegeben"}` : ""}
-
-  Wassersystem:    ${data.hasWaterSystem || "Nicht angegeben"}
-  Muldenlüfter:    ${data.hasMuldenluefter || "Nicht angegeben"}
-
-  Küche vor Ort:   ${data.kitchenAtCustomer === "ja" ? "Ja" : data.kitchenAtCustomer === "nein" ? "Nein" : "Nicht angegeben"}
-  ${data.needsPickup ? `  Abholung nötig: ${data.needsPickup === "ja" ? "Ja" : "Nein"}` : ""}
-  ${data.pickupLocationName ? `  Abholort:       ${data.pickupLocationName}` : ""}
-
-  Arbeitsplatte:   ${data.countertopType || "Nicht angegeben"}
-  Küchenzustand:   ${data.kitchenCondition || "Nicht angegeben"}
-
-  Wasseranschluss: ${data.needsWater === "ja" ? "Ja" : data.needsWater === "nein" ? "Nein" : "Nicht angegeben"}
-  Elektroanschluss: ${data.needsElectric === "ja" ? "Ja" : data.needsElectric === "nein" ? "Nein" : "Nicht angegeben"}
-  Platte zuschneiden: ${data.needsCountertop === "ja" ? "Ja" : data.needsCountertop === "nein" ? "Nein" : "Nicht angegeben"}
-`);
+// Get priority from service details
+function getPriority(data: ContactFormData): string {
+  const urgency = data.serviceDetails?.urgency || data.serviceDetails?.Dringlichkeit || "";
+  if (urgency.toLowerCase().includes("dringend") || urgency.toLowerCase().includes("express")) {
+    return "DRINGEND";
   }
-
-  // Furniture specific
-  if (data.service === "moebelmontage" || data.service === "lieferung-montage") {
-    sections.push(`
-┌─────────────────────────────────────────────────────────────┐
-│ MÖBEL-DETAILS                                                 │
-└─────────────────────────────────────────────────────────────┘
-  Möbelart:   ${data.furnitureType || "Nicht angegeben"}
-  Marke:      ${data.furnitureBrand || "Nicht angegeben"}
-  Anzahl:     ${data.itemCount || "Nicht angegeben"}
-`);
+  if (urgency.toLowerCase().includes("normal")) {
+    return "Normal";
   }
-
-  // Delivery specific
-  if (data.service === "lieferung" || data.service === "lieferung-montage") {
-    sections.push(`
-┌─────────────────────────────────────────────────────────────┐
-│ LIEFER-DETAILS                                                │
-└─────────────────────────────────────────────────────────────┘
-  Abholort:   ${data.pickupLocation || "Nicht angegeben"}
-  Größe:      ${data.itemSize || "Nicht angegeben"}
-  Stockwerk:  ${data.floor || "Nicht angegeben"}
-  Aufzug:     ${data.hasElevator || "Nicht angegeben"}
-`);
-  }
-
-  // Access & Logistics
-  if (data.parking || data.accessDifficulty) {
-    sections.push(`
-┌─────────────────────────────────────────────────────────────┐
-│ ZUGANG & PARKEN                                               │
-└─────────────────────────────────────────────────────────────┘
-  Parkmöglichkeit: ${data.parking || "Nicht angegeben"}
-  Zugang:          ${data.accessDifficulty || "Nicht angegeben"}
-`);
-  }
-
-  // Message
-  sections.push(`
-┌─────────────────────────────────────────────────────────────┐
-│ NACHRICHT                                                     │
-└─────────────────────────────────────────────────────────────┘
-
-${data.message || "Keine zusätzliche Nachricht"}
-`);
-
-  // Images
-  if (images.length > 0) {
-    sections.push(`
-┌─────────────────────────────────────────────────────────────┐
-│ BILDER (${images.length})                                              │
-└─────────────────────────────────────────────────────────────┘
-${images.map((img, i) => `  ${i + 1}. ${img.fileName}: ${img.url}`).join("\n")}
-`);
-  }
-
-  // Documents
-  if (documents.length > 0) {
-    sections.push(`
-┌─────────────────────────────────────────────────────────────┐
-│ DOKUMENTE (${documents.length})                                           │
-└─────────────────────────────────────────────────────────────┘
-${documents.map((doc, i) => `  ${i + 1}. ${doc.fileName}: ${doc.url}`).join("\n")}
-`);
-  }
-
-  // Footer
-  sections.push(`
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Diese Anfrage wurde über keller-montage.de gesendet.
-Bitte antworten Sie zeitnah auf diese Anfrage.
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-`);
-
-  return sections.join("\n");
+  return "Flexibel";
 }
 
-function createHtmlEmail(data: ContactFormData, uploadedFiles: UploadedFile[]): string {
-  const anredeText = anredeNames[data.anrede] || "";
-  const images = uploadedFiles.filter(f => f.fileType === "image");
-  const documents = uploadedFiles.filter(f => f.fileType === "document");
+// Send to Google Sheets - Only essential columns (no phone).
+// Returns true only when a request was actually accepted by the webhook.
+async function sendToGoogleSheets(data: ContactFormData): Promise<boolean> {
+  const webhookUrl = process.env.SHEETS_WEBHOOK_URL;
+  if (!webhookUrl) return false;
 
-  // Create images in grid layout (2-3 per row)
-  const createImageGrid = (imgs: UploadedFile[]) => {
-    const rows: string[] = [];
-    for (let i = 0; i < imgs.length; i += 3) {
-      const rowImages = imgs.slice(i, i + 3);
-      const cellWidth = Math.floor(100 / rowImages.length);
-      rows.push(`
-        <tr>
-          ${rowImages.map(img => `
-            <td width="${cellWidth}%" style="padding: 6px; vertical-align: top;">
-              <div style="background: #fff; border-radius: 8px; overflow: hidden; text-align: center;">
-                <a href="${img.url}" target="_blank">
-                  <img src="${img.url}" alt="${img.fileName}" style="width: 100%; height: 120px; object-fit: cover; display: block;" />
-                </a>
-                <p style="margin: 6px 0; font-size: 10px; color: #666; padding: 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${img.fileName}</p>
-              </div>
-            </td>
-          `).join("")}
-          ${rowImages.length < 3 ? `<td colspan="${3 - rowImages.length}"></td>` : ""}
-        </tr>
-      `);
-    }
-    return rows.join("");
-  };
+  try {
+    const priority = getPriority(data);
 
-  const imagesHtml = images.length > 0 ? `
-    <!-- Images Section - Grid Layout -->
-    <tr>
-      <td style="padding: 16px;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background: linear-gradient(135deg, #E63946 0%, #c62828 100%); border-radius: 12px; overflow: hidden;">
-          <tr>
-            <td style="padding: 16px;">
-              <h2 style="color: #ffffff; margin: 0 0 12px 0; font-size: 16px; font-weight: 600;">
-                📷 Bilder (${images.length})
-              </h2>
-              <table width="100%" cellpadding="0" cellspacing="0">
-                ${createImageGrid(images)}
-              </table>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  ` : "";
+    const res = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        submissionId: data.submissionId,
+        eventType: "form",
+        name: data.name,
+        email: data.email || "-",
+        plz: data.plz || "-",
+        service: SERVICE_NAMES[data.service] || data.service,
+        priority: priority,
+        quelle: data.quelle || "Direct",
+        gclid: data.gclid || "-",
+      }),
+    });
+    return res.ok;
+  } catch (e) {
+    console.error("Sheets error:", e);
+    return false;
+  }
+}
 
-  // Create documents HTML - compact inline layout
-  const documentsHtml = documents.length > 0 ? `
-    <!-- Documents Section - Compact -->
-    <tr>
-      <td style="padding: 0 16px 16px 16px;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background: #1565C0; border-radius: 10px; overflow: hidden;">
-          <tr>
-            <td style="padding: 14px;">
-              <h3 style="color: #fff; margin: 0 0 10px 0; font-size: 14px;">📄 Dokumente (${documents.length})</h3>
-              <table width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  ${documents.map(doc => `
-                    <td style="padding: 4px;">
-                      <a href="${doc.url}" target="_blank" style="display: block; background: #fff; border-radius: 6px; padding: 10px; text-decoration: none; text-align: center;">
-                        <span style="font-size: 24px; display: block;">📄</span>
-                        <span style="font-size: 11px; color: #333; display: block; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${doc.fileName}</span>
-                        <span style="font-size: 10px; color: #1565C0; display: block; margin-top: 4px;">⬇ Download</span>
-                      </a>
-                    </td>
-                  `).join("")}
-                </tr>
-              </table>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  ` : "";
+// Build email HTML - Compact dark theme like keller-montage.de
+function buildEmailHtml(data: ContactFormData): string {
+  const serviceName = SERVICE_NAMES[data.service] || data.service;
+  const priority = getPriority(data);
+  const isDringend = priority === "DRINGEND";
+  const details = data.serviceDetails || {};
 
-  // Kitchen details section
-  const kitchenHtml = data.service === "kuechenmontage" ? `
-    <tr>
-      <td style="padding: 0 16px 16px 16px;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #FFF8E1; border-radius: 12px; border-left: 4px solid #FF9800;">
-          <tr>
-            <td style="padding: 20px;">
-              <h2 style="color: #E65100; margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">🍳 Küchen-Details</h2>
-              <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 14px;">
-                <tr><td style="padding: 6px 0; color: #666;">Marke:</td><td style="padding: 6px 0; color: #333; font-weight: 500;">${data.brand || "—"}</td></tr>
-                <tr><td style="padding: 6px 0; color: #666;">Küchenform:</td><td style="padding: 6px 0; color: #333; font-weight: 500;">${data.kitchenShape || "—"}</td></tr>
-                <tr><td style="padding: 6px 0; color: #666;">Anzahl Schränke:</td><td style="padding: 6px 0; color: #333; font-weight: 500;">${data.cabinetCount || "—"}</td></tr>
-                <tr><td style="padding: 6px 0; color: #666;">Geräte:</td><td style="padding: 6px 0; color: #333; font-weight: 500;">${data.appliances || "—"}</td></tr>
-                <tr><td style="padding: 6px 0; color: #666;">Alte Küche:</td><td style="padding: 6px 0; color: #333; font-weight: 500;">${data.hasOldKitchen === "ja" ? `✅ Ja (${data.oldKitchenAction || "—"})` : "❌ Nein"}</td></tr>
-                <tr><td style="padding: 6px 0; color: #666;">Arbeitsplatte:</td><td style="padding: 6px 0; color: #333; font-weight: 500;">${data.countertopType || "—"}</td></tr>
-                <tr><td style="padding: 6px 0; color: #666;">Wasseranschluss:</td><td style="padding: 6px 0; color: #333; font-weight: 500;">${data.needsWater === "ja" ? "✅ Ja" : data.needsWater === "nein" ? "❌ Nein" : "—"}</td></tr>
-                <tr><td style="padding: 6px 0; color: #666;">Elektroanschluss:</td><td style="padding: 6px 0; color: #333; font-weight: 500;">${data.needsElectric === "ja" ? "✅ Ja" : data.needsElectric === "nein" ? "❌ Nein" : "—"}</td></tr>
-                ${data.needsPickup === "ja" ? `<tr><td style="padding: 6px 0; color: #666;">Abholung von:</td><td style="padding: 6px 0; color: #333; font-weight: 500;">${data.pickupLocationName || "—"}</td></tr>` : ""}
-              </table>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  ` : "";
+  // Helper for table row - compact style
+  const row = (label: string, value: string) =>
+    value && value !== "-" && value !== ""
+      ? `<tr>
+          <td style="padding:3px 0;color:#9ca3af;font-size:13px;width:42%;">${label}:</td>
+          <td style="padding:3px 0;color:#fff;font-size:13px;font-weight:500;">${value}</td>
+        </tr>`
+      : "";
 
-  // Furniture details section
-  const furnitureHtml = (data.service === "moebelmontage" || data.service === "lieferung-montage") ? `
-    <tr>
-      <td style="padding: 0 16px 16px 16px;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #E8F5E9; border-radius: 12px; border-left: 4px solid #4CAF50;">
-          <tr>
-            <td style="padding: 20px;">
-              <h2 style="color: #2E7D32; margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">🛋️ Möbel-Details</h2>
-              <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 14px;">
-                <tr><td style="padding: 6px 0; color: #666;">Möbelart:</td><td style="padding: 6px 0; color: #333; font-weight: 500;">${data.furnitureType || "—"}</td></tr>
-                <tr><td style="padding: 6px 0; color: #666;">Marke:</td><td style="padding: 6px 0; color: #333; font-weight: 500;">${data.furnitureBrand || "—"}</td></tr>
-                <tr><td style="padding: 6px 0; color: #666;">Anzahl:</td><td style="padding: 6px 0; color: #333; font-weight: 500;">${data.itemCount || "—"}</td></tr>
-              </table>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  ` : "";
+  // Section with colored left border
+  const section = (icon: string, title: string, borderColor: string, rows: string) =>
+    rows.trim()
+      ? `<div style="background:#1a1a2e;border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid ${borderColor};">
+          <div style="font-weight:600;color:${borderColor};margin-bottom:6px;font-size:12px;">${icon} ${title}</div>
+          <table style="width:100%;">${rows}</table>
+        </div>`
+      : "";
 
-  // Delivery details section
-  const deliveryHtml = (data.service === "lieferung" || data.service === "lieferung-montage") ? `
-    <tr>
-      <td style="padding: 0 16px 16px 16px;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #E3F2FD; border-radius: 12px; border-left: 4px solid #2196F3;">
-          <tr>
-            <td style="padding: 20px;">
-              <h2 style="color: #1565C0; margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">🚚 Liefer-Details</h2>
-              <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 14px;">
-                <tr><td style="padding: 6px 0; color: #666;">Abholort:</td><td style="padding: 6px 0; color: #333; font-weight: 500;">${data.pickupLocation || "—"}</td></tr>
-                <tr><td style="padding: 6px 0; color: #666;">Größe:</td><td style="padding: 6px 0; color: #333; font-weight: 500;">${data.itemSize || "—"}</td></tr>
-                <tr><td style="padding: 6px 0; color: #666;">Stockwerk:</td><td style="padding: 6px 0; color: #333; font-weight: 500;">${data.floor || "—"}</td></tr>
-                <tr><td style="padding: 6px 0; color: #666;">Aufzug:</td><td style="padding: 6px 0; color: #333; font-weight: 500;">${data.hasElevator || "—"}</td></tr>
-              </table>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  ` : "";
+  // Build service-specific details
+  let detailsRows = "";
+  let detailsTitle = "Details";
+  let detailsIcon = "📋";
 
-  // Access details section
-  const accessHtml = (data.parking || data.accessDifficulty) ? `
-    <tr>
-      <td style="padding: 0 16px 16px 16px;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #F3E5F5; border-radius: 12px; border-left: 4px solid #9C27B0;">
-          <tr>
-            <td style="padding: 20px;">
-              <h2 style="color: #7B1FA2; margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">🅿️ Zugang & Parken</h2>
-              <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 14px;">
-                ${data.parking ? `<tr><td style="padding: 6px 0; color: #666;">Parkmöglichkeit:</td><td style="padding: 6px 0; color: #333; font-weight: 500;">${data.parking}</td></tr>` : ""}
-                ${data.accessDifficulty ? `<tr><td style="padding: 6px 0; color: #666;">Zugang:</td><td style="padding: 6px 0; color: #333; font-weight: 500;">${data.accessDifficulty}</td></tr>` : ""}
-              </table>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  ` : "";
+  if (data.service === "kuechenmontage") {
+    detailsTitle = "Küchen-Details";
+    detailsIcon = "🍳";
+    detailsRows = [
+      row("Möbelart", details.furnitureType),
+      row("Marke", details.brand),
+      row("Form", details.form),
+      row("Schränke", details.cabinetCount),
+      row("Zustand", details.kitchenCondition),
+      row("Arbeitsplatte", details.countertopType),
+      row("Alte Küche", details.hasOldKitchen === "Ja" ? `Ja - ${details.oldKitchenAction || ""}` : details.hasOldKitchen),
+      row("Wassersystem", details.hasWaterSystem),
+      row("Wasseranschluss", details.waterConnection),
+      row("Elektroanschluss", details.electricConnection),
+      row("Platte zuschneiden", details.cutCountertop),
+    ].join("");
+  } else if (data.service === "moebelmontage") {
+    detailsTitle = "Möbel-Details";
+    detailsIcon = "🪑";
+    detailsRows = [
+      row("Möbelart", details.furnitureType),
+      row("Marke", details.brand),
+      row("Anzahl", details.itemCount),
+      row("Zustand", details.furnitureCondition),
+      row("Vor Ort", details.furnitureOnSite),
+    ].join("");
+  } else if (data.service === "lieferungen") {
+    detailsTitle = "Lieferung-Details";
+    detailsIcon = "🚚";
+    detailsRows = [
+      row("Abholadresse", details.pickupAddress),
+      row("Abholung Etage", details.pickupFloor),
+      row("Lieferadresse", details.deliveryAddress),
+      row("Lieferung Etage", details.deliveryFloor),
+      row("Beschreibung", details.itemDescription),
+      row("Anzahl", details.itemCount),
+      row("Größe/Gewicht", details.itemSize),
+      row("Helfer", details.needHelpers),
+    ].join("");
+  } else if (data.service === "umzuege") {
+    detailsTitle = "Umzug-Details";
+    detailsIcon = "🏠";
+    detailsRows = [
+      row("Aktuelle Adresse", details.currentAddress),
+      row("Aktuelle Etage", details.currentFloor),
+      row("Wohnfläche", details.currentSize),
+      row("Zimmer", details.currentRooms),
+      row("Aufzug (aktuell)", details.hasElevator),
+      row("Neue Adresse", details.newAddress),
+      row("Neue Etage", details.newFloor),
+      row("Aufzug (neu)", details.newHasElevator),
+      row("Schwere Gegenstände", details.hasHeavyItems === "Ja" ? `Ja - ${details.heavyItemsDescription || ""}` : details.hasHeavyItems),
+      row("Verpackung", details.needPacking),
+      row("Zwischenlagerung", details.needStorage),
+    ].join("");
+  } else if (data.service === "entruempelung") {
+    detailsTitle = "Entrümpelung-Details";
+    detailsIcon = "🧹";
+    detailsRows = [
+      row("Adresse", details.address),
+      row("Etage", details.floor),
+      row("Aufzug", details.hasElevator),
+      row("Bereichsart", details.areaType),
+      row("Fläche", details.areaSize),
+      row("Räume", details.roomCount),
+      row("Gegenstandsart", details.itemTypes),
+      row("Schwere Gegenstände", details.hasHeavyItems),
+      row("Entsorgung", details.needsDisposal),
+      row("Sondergegenstände", details.specialItems),
+    ].join("");
+  }
 
-  return `
-<!DOCTYPE html>
-<html lang="de">
+  // Terminwunsch rows
+  const terminRows = [
+    row("Dringlichkeit", details.urgency),
+    row("Zeitraum", details.timeframe || details.moveDate),
+    row("Tageszeit", details.dayTime),
+  ].join("");
+
+  // Zugang & Parken rows
+  const zugangRows = [
+    row("Parkmöglichkeit", details.parking || details.currentParking || details.pickupParking),
+    row("Zugang", details.access),
+    row("Abholung nötig", details.needPickup === "Ja" ? `Ja - ${details.pickupAddress || ""}` : details.needPickup),
+  ].join("");
+
+  // Files/Attachments section - with debug logging
+  console.log("Email builder - fileUrls received:", JSON.stringify(data.fileUrls));
+  let filesHtml = "";
+  const validUrls = (data.fileUrls || []).filter(url => url && url.trim() !== "");
+  console.log("Email builder - valid URLs count:", validUrls.length);
+
+  if (validUrls.length > 0) {
+    const fileItems = validUrls.map((url, i) => {
+      const isImage = /\.(jpg|jpeg|png|webp|gif)/i.test(url);
+      console.log(`File ${i+1}: ${url} - isImage: ${isImage}`);
+      if (isImage) {
+        return `<div style="margin:6px 0;">
+          <a href="${url}" target="_blank" style="display:block;">
+            <img src="${url}" alt="Bild ${i+1}" style="max-width:100%;max-height:150px;border-radius:6px;border:1px solid #333;"/>
+          </a>
+        </div>`;
+      }
+      return `<div style="margin:4px 0;">
+        <a href="${url}" target="_blank" style="color:#60a5fa;font-size:12px;text-decoration:none;">📎 Datei ${i+1} herunterladen</a>
+      </div>`;
+    }).join("");
+
+    filesHtml = `<div style="background:#1a1a2e;border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid #3b82f6;">
+      <div style="font-weight:600;color:#60a5fa;margin-bottom:6px;font-size:12px;">📎 Anhänge (${validUrls.length})</div>
+      ${fileItems}
+    </div>`;
+  }
+
+  // Message section
+  const messageHtml = data.message
+    ? `<div style="background:#1a1a2e;border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid #6b7280;">
+        <div style="font-weight:600;color:#9ca3af;margin-bottom:6px;font-size:12px;">💬 Nachricht</div>
+        <div style="color:#d1d5db;font-size:12px;white-space:pre-wrap;line-height:1.4;">${data.message}</div>
+      </div>`
+    : "";
+
+  return `<!DOCTYPE html>
+<html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>Neue Anfrage - KELLER Montage</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f0f2f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f0f2f5;">
-    <tr>
-      <td style="padding: 20px 10px;">
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="600" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
-          <!-- Header -->
-          <tr>
-            <td style="background: linear-gradient(135deg, #E63946 0%, #c62828 100%); padding: 32px 24px; text-align: center;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">📬 Neue Anfrage</h1>
-              <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 14px;">keller-montage.de</p>
-            </td>
-          </tr>
+<body style="margin:0;padding:0;background:#0f0f1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="max-width:380px;margin:0 auto;background:#0f0f1a;">
 
-          <!-- Service Badge -->
-          <tr>
-            <td style="padding: 24px 16px 16px 16px; text-align: center;">
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">
-                <tr>
-                  <td style="background-color: #E63946; color: white; padding: 10px 24px; border-radius: 50px; font-weight: 600; font-size: 14px;">
-                    ${serviceNames[data.service] || data.service}
-                  </td>
-                  ${data.urgency === "express" ? `
-                  <td style="padding-left: 8px;">
-                    <span style="display: inline-block; background-color: #FF6D00; color: white; padding: 10px 20px; border-radius: 50px; font-weight: 600; font-size: 14px;">
-                      ⚡ DRINGEND
-                    </span>
-                  </td>
-                  ` : ""}
-                </tr>
-              </table>
-            </td>
-          </tr>
+  <!-- Header -->
+  <div style="background:linear-gradient(135deg,#ef4444,#dc2626);padding:14px;text-align:center;">
+    <div style="font-size:16px;font-weight:700;color:#fff;">📬 Neue Anfrage</div>
+    <div style="color:rgba(255,255,255,0.8);font-size:10px;margin-top:2px;">keller-montage.de</div>
+  </div>
 
-          <!-- Contact Info Card -->
-          <tr>
-            <td style="padding: 0 16px 16px 16px;">
-              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8f9fa; border-radius: 12px; border-left: 4px solid #E63946;">
-                <tr>
-                  <td style="padding: 20px;">
-                    <h2 style="color: #1F2430; margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">👤 Kontaktdaten</h2>
-                    <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 14px;">
-                      <tr>
-                        <td style="padding: 8px 0; color: #666; width: 100px;">Name:</td>
-                        <td style="padding: 8px 0; color: #1F2430; font-weight: 600; font-size: 16px;">${anredeText} ${data.name}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 8px 0; color: #666;">Telefon:</td>
-                        <td style="padding: 8px 0;">
-                          <a href="tel:${data.phone}" style="color: #E63946; text-decoration: none; font-weight: 600; font-size: 16px;">📱 ${data.phone}</a>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 8px 0; color: #666;">E-Mail:</td>
-                        <td style="padding: 8px 0;">
-                          ${data.email ? `<a href="mailto:${data.email}" style="color: #E63946; text-decoration: none; font-weight: 500;">${data.email}</a>` : '<span style="color: #999;">—</span>'}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 8px 0; color: #666;">Stadt:</td>
-                        <td style="padding: 8px 0; color: #1F2430; font-weight: 500;">📍 ${data.city}</td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
+  <!-- Content -->
+  <div style="padding:10px;">
 
-          <!-- CTA Buttons -->
-          <tr>
-            <td style="padding: 0 16px 16px 16px;">
-              <table width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="padding: 8px; text-align: center;" width="50%">
-                    <a href="tel:${data.phone}" style="display: block; background-color: #E63946; color: white; padding: 14px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">📞 Jetzt anrufen</a>
-                  </td>
-                  <td style="padding: 8px; text-align: center;" width="50%">
-                    <a href="https://wa.me/491602255443?text=Hallo%2C%20ich%20rufe%20wegen%20der%20Anfrage%20von%20${encodeURIComponent(data.name)}%20an." style="display: block; background-color: #25D366; color: white; padding: 14px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">💬 WhatsApp</a>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
+    <!-- Service Badges -->
+    <div style="text-align:center;margin-bottom:10px;">
+      <span style="display:inline-block;background:#166534;color:#4ade80;padding:5px 12px;border-radius:12px;font-weight:600;font-size:12px;margin:2px;">${serviceName}</span>
+      ${isDringend ? `<span style="display:inline-block;background:#854d0e;color:#fbbf24;padding:5px 12px;border-radius:12px;font-weight:600;font-size:12px;margin:2px;">⚡ DRINGEND</span>` : ""}
+    </div>
 
-          <!-- Timing Section -->
-          <tr>
-            <td style="padding: 0 16px 16px 16px;">
-              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #E8F5E9; border-radius: 12px; border-left: 4px solid #4CAF50;">
-                <tr>
-                  <td style="padding: 20px;">
-                    <h2 style="color: #2E7D32; margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">📅 Terminwunsch</h2>
-                    <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 14px;">
-                      <tr><td style="padding: 6px 0; color: #666;">Dringlichkeit:</td><td style="padding: 6px 0; color: #333; font-weight: 500;">${urgencyNames[data.urgency] || data.urgency || "—"}</td></tr>
-                      <tr><td style="padding: 6px 0; color: #666;">Zeitraum:</td><td style="padding: 6px 0; color: #333; font-weight: 500;">${timeframeNames[data.timeframe] || data.timeframe || "—"}</td></tr>
-                      <tr><td style="padding: 6px 0; color: #666;">Tageszeit:</td><td style="padding: 6px 0; color: #333; font-weight: 500;">${data.timeOfDay || "—"}</td></tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
+    <!-- Kontaktdaten -->
+    <div style="background:#1a1a2e;border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid #f472b6;">
+      <div style="font-weight:600;color:#f472b6;margin-bottom:6px;font-size:12px;">👤 Kontaktdaten</div>
+      <table style="width:100%;">
+        ${row("Name", data.name)}
+        <tr>
+          <td style="padding:3px 0;color:#9ca3af;font-size:13px;width:42%;">Telefon:</td>
+          <td style="padding:3px 0;font-size:13px;">
+            <a href="tel:${data.phone}" style="color:#f472b6;text-decoration:none;font-weight:600;">📱 ${data.phone}</a>
+          </td>
+        </tr>
+        ${data.email ? `<tr>
+          <td style="padding:3px 0;color:#9ca3af;font-size:13px;">E-Mail:</td>
+          <td style="padding:3px 0;font-size:13px;">
+            <a href="mailto:${data.email}" style="color:#f472b6;text-decoration:none;">${data.email}</a>
+          </td>
+        </tr>` : ""}
+        ${data.plz ? row("Stadt", "📍 " + data.plz) : ""}
+      </table>
+    </div>
 
-          ${kitchenHtml}
-          ${furnitureHtml}
-          ${deliveryHtml}
-          ${accessHtml}
+    <!-- Quick Buttons -->
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:10px;">
+      <tr>
+        <td width="48%" style="padding-right:4px;">
+          <a href="tel:${data.phone}" style="display:block;background:transparent;border:2px solid #f472b6;color:#f472b6;padding:8px;border-radius:6px;text-align:center;text-decoration:none;font-weight:600;font-size:12px;">
+            📞 Jetzt anrufen
+          </a>
+        </td>
+        <td width="48%" style="padding-left:4px;">
+          <a href="https://wa.me/${data.phone.replace(/\D/g, "")}" style="display:block;background:#22c55e;color:#fff;padding:8px;border-radius:6px;text-align:center;text-decoration:none;font-weight:600;font-size:12px;">
+            💬 WhatsApp
+          </a>
+        </td>
+      </tr>
+    </table>
 
-          <!-- Message Section -->
-          <tr>
-            <td style="padding: 0 16px 16px 16px;">
-              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #ECEFF1; border-radius: 12px;">
-                <tr>
-                  <td style="padding: 20px;">
-                    <h2 style="color: #37474F; margin: 0 0 12px 0; font-size: 16px; font-weight: 600;">💬 Nachricht</h2>
-                    <p style="margin: 0; color: #455A64; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${data.message || "Keine zusätzliche Nachricht"}</p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
+    <!-- Terminwunsch -->
+    ${section("📅", "Terminwunsch", "#22c55e", terminRows)}
 
-          ${imagesHtml}
-          ${documentsHtml}
+    <!-- Service Details -->
+    ${section(detailsIcon, detailsTitle, "#22c55e", detailsRows)}
 
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #1F2430; padding: 24px; text-align: center;">
-              <p style="color: rgba(255,255,255,0.7); margin: 0 0 8px 0; font-size: 12px;">
-                Diese Anfrage wurde über keller-montage.de gesendet.
-              </p>
-              <p style="color: rgba(255,255,255,0.5); margin: 0; font-size: 11px;">
-                ${new Date().toLocaleString("de-DE", { dateStyle: "full", timeStyle: "short" })}
-              </p>
-            </td>
-          </tr>
+    <!-- Zugang & Parken -->
+    ${section("🅿️", "Zugang & Parken", "#a855f7", zugangRows)}
 
-        </table>
-      </td>
-    </tr>
-  </table>
+    <!-- Files -->
+    ${filesHtml}
+
+    <!-- Message -->
+    ${messageHtml}
+
+  </div>
+
+  <!-- Footer -->
+  <div style="padding:8px;text-align:center;color:#6b7280;font-size:10px;border-top:1px solid #1a1a2e;">
+    ${new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" })}
+  </div>
+
+</div>
 </body>
-</html>
-`;
+</html>`;
+}
+
+// Remove non-ASCII characters for email fields
+function toAscii(str: string): string {
+  return str
+    .replace(/ä/g, 'ae')
+    .replace(/ö/g, 'oe')
+    .replace(/ü/g, 'ue')
+    .replace(/ß/g, 'ss')
+    .replace(/Ä/g, 'Ae')
+    .replace(/Ö/g, 'Oe')
+    .replace(/Ü/g, 'Ue')
+    .replace(/[^\x00-\x7F]/g, '');
+}
+
+// Parse and sanitize the from email field
+function getSafeFromEmail(): string {
+  const fromEnv = process.env.RESEND_FROM_EMAIL || "";
+
+  // Check if format is "Name <email>"
+  const match = fromEnv.match(/<([^>]+)>/);
+  if (match) {
+    // Extract just the email
+    const email = match[1];
+    // Convert the name part to ASCII
+    const namePart = fromEnv.replace(/<[^>]+>/, '').trim();
+    const safeName = toAscii(namePart) || "Moebelmontage Nuernberg";
+    return `${safeName} <${email}>`;
+  }
+
+  // If it's just an email, use default name
+  if (fromEnv.includes('@')) {
+    return `Moebelmontage Nuernberg <${fromEnv}>`;
+  }
+
+  // Fallback
+  return "Moebelmontage Nuernberg <onboarding@resend.dev>";
+}
+
+// Try to extract a human-readable message from a Resend error response
+function parseResendError(status: number, errorText: string): string {
+  let message = errorText;
+  try {
+    const parsed = JSON.parse(errorText);
+    message = parsed.message || parsed.error || errorText;
+  } catch {
+    // errorText is not JSON, use it as-is
+  }
+
+  const lower = message.toLowerCase();
+
+  if (status === 401 || lower.includes("api key") || lower.includes("unauthorized")) {
+    return "E-Mail-Versand fehlgeschlagen: Der Resend API-Schlüssel (RESEND_API_KEY) ist ungültig.";
+  }
+  if (status === 403 || lower.includes("domain is not verified") || lower.includes("not verified")) {
+    return "E-Mail-Versand fehlgeschlagen: Die Absender-Domain ist bei Resend nicht verifiziert. Bitte Domain verifizieren oder RESEND_FROM_EMAIL auf onboarding@resend.dev setzen.";
+  }
+  if (lower.includes("from") && (lower.includes("invalid") || lower.includes("not allowed"))) {
+    return `E-Mail-Versand fehlgeschlagen: Die Absender-Adresse (RESEND_FROM_EMAIL) ist ungültig. (${message})`;
+  }
+  if (status === 422) {
+    return `E-Mail-Versand fehlgeschlagen: Ungültige Angaben. (${message})`;
+  }
+  if (status === 429) {
+    return "E-Mail-Versand fehlgeschlagen: Zu viele Anfragen (Rate-Limit von Resend erreicht). Bitte kurz warten.";
+  }
+
+  return `E-Mail-Versand fehlgeschlagen (Resend ${status}): ${message}`;
+}
+
+// Send email - returns whether the email was ACTUALLY sent, plus a detailed reason on failure
+async function sendEmail(data: ContactFormData): Promise<{ emailSent: boolean; error?: string }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const recipientEmail = process.env.RECIPIENT_EMAIL;
+
+  // Report exactly which piece of configuration is missing
+  if (!apiKey && !recipientEmail) {
+    return {
+      emailSent: false,
+      error: "E-Mail-Versand ist nicht konfiguriert: RESEND_API_KEY und RECIPIENT_EMAIL fehlen.",
+    };
+  }
+  if (!apiKey) {
+    return {
+      emailSent: false,
+      error: "E-Mail-Versand ist nicht konfiguriert: RESEND_API_KEY fehlt.",
+    };
+  }
+  if (!recipientEmail) {
+    return {
+      emailSent: false,
+      error: "E-Mail-Versand ist nicht konfiguriert: RECIPIENT_EMAIL (Empfänger) fehlt.",
+    };
+  }
+
+  const serviceName = SERVICE_NAMES[data.service] || data.service;
+  const priority = getPriority(data);
+
+  // Get sanitized from email
+  const safeFrom = getSafeFromEmail();
+
+  // Convert to ASCII for email headers
+  const safeServiceName = toAscii(serviceName);
+  const safeName = toAscii(data.name);
+
+  try {
+    // Prepare email payload
+    const emailPayload: Record<string, unknown> = {
+      from: safeFrom,
+      to: [recipientEmail],
+      subject: `${priority === "DRINGEND" ? "[DRINGEND] " : ""}${safeServiceName} - ${safeName}`,
+      html: buildEmailHtml(data),
+      reply_to: data.email || undefined,
+    };
+
+    // Add file attachments if present (PDFs, DOCs, etc.)
+    if (data.fileAttachments && data.fileAttachments.length > 0) {
+      console.log(`Adding ${data.fileAttachments.length} file attachments to email`);
+      emailPayload.attachments = data.fileAttachments.map(att => ({
+        filename: att.filename,
+        content: att.content, // base64 content
+      }));
+    }
+
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(emailPayload),
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error("Email error:", res.status, errorText);
+      return { emailSent: false, error: parseResendError(res.status, errorText) };
+    }
+
+    console.log("Email sent successfully");
+    return { emailSent: true };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("Email error:", message);
+    return { emailSent: false, error: `Netzwerkfehler beim E-Mail-Versand: ${message}` };
+  }
 }
 
 export async function POST(request: NextRequest) {
-  console.log("📨 Contact form submission received");
-
   try {
-    // Check if RESEND_API_KEY is configured
-    if (!process.env.RESEND_API_KEY) {
-      console.error("❌ RESEND_API_KEY is not set in environment variables!");
+    const body = await request.json();
+
+    if (!body.submissionId || !body.service || !body.name || !body.phone) {
       return NextResponse.json(
-        { error: "E-Mail-System nicht konfiguriert. Bitte kontaktieren Sie uns unter +49 160 2255443" },
-        { status: 500 }
+        { success: false, error: "Pflichtfelder fehlen (Dienstleistung, Name und Telefon sind erforderlich)." },
+        { status: 400 },
       );
     }
 
-    const formData = await request.formData();
+    // Log received data for debugging
+    console.log("Received contact form:", {
+      service: body.service,
+      name: body.name,
+      fileUrls: body.fileUrls,
+      fileUrlsCount: body.fileUrls?.length || 0,
+      fileAttachmentsCount: body.fileAttachments?.length || 0,
+    });
 
-    // Extract form data
     const data: ContactFormData = {
-      service: formData.get("service") as string || "",
-      urgency: formData.get("urgency") as string || "",
-      timeframe: formData.get("timeframe") as string || "",
-      timeOfDay: formData.get("timeOfDay") as string || "",
-      brand: formData.get("brand") as string || "",
-      kitchenShape: formData.get("kitchenShape") as string || "",
-      cabinetCount: formData.get("cabinetCount") as string || "",
-      appliances: formData.get("appliances") as string || "",
-      hasOldKitchen: formData.get("hasOldKitchen") as string || "",
-      oldKitchenAction: formData.get("oldKitchenAction") as string || "",
-      hasWaterSystem: formData.get("hasWaterSystem") as string || "",
-      hasMuldenluefter: formData.get("hasMuldenluefter") as string || "",
-      kitchenAtCustomer: formData.get("kitchenAtCustomer") as string || "",
-      needsPickup: formData.get("needsPickup") as string || "",
-      pickupLocationName: formData.get("pickupLocationName") as string || "",
-      countertopType: formData.get("countertopType") as string || "",
-      kitchenCondition: formData.get("kitchenCondition") as string || "",
-      needsWater: formData.get("needsWater") as string || "",
-      needsElectric: formData.get("needsElectric") as string || "",
-      needsCountertop: formData.get("needsCountertop") as string || "",
-      furnitureType: formData.get("furnitureType") as string || "",
-      furnitureBrand: formData.get("furnitureBrand") as string || "",
-      itemCount: formData.get("itemCount") as string || "",
-      pickupLocation: formData.get("pickupLocation") as string || "",
-      floor: formData.get("floor") as string || "",
-      hasElevator: formData.get("hasElevator") as string || "",
-      itemSize: formData.get("itemSize") as string || "",
-      parking: formData.get("parking") as string || "",
-      accessDifficulty: formData.get("accessDifficulty") as string || "",
-      message: formData.get("message") as string || "",
-      anrede: formData.get("anrede") as string || "",
-      name: formData.get("name") as string || "",
-      phone: formData.get("phone") as string || "",
-      email: formData.get("email") as string || "",
-      city: formData.get("city") as string || "",
+      submissionId: body.submissionId,
+      service: body.service,
+      name: body.name,
+      email: body.email || "",
+      phone: body.phone,
+      plz: body.plz || "",
+      message: body.message || "",
+      fileUrls: body.fileUrls || [],
+      fileAttachments: body.fileAttachments || [],
+      serviceDetails: body.serviceDetails || {},
+      gclid: body.gclid,
+      quelle: body.quelle,
+      seite: body.seite,
     };
 
-    // Validate required fields
-    if (!data.name || !data.phone || !data.city || !data.service || !data.email) {
+    // Secondary notification (best effort): Google Sheets. Never blocks the result.
+    let sheetsSuccess = false;
+    try {
+      sheetsSuccess = await sendToGoogleSheets(data);
+      if (sheetsSuccess) console.log("Google Sheets notification sent successfully");
+    } catch (sheetsError) {
+      console.error("Google Sheets error:", sheetsError);
+    }
+
+    // Primary notification: the e-mail to the business. This MUST succeed.
+    const emailResult = await sendEmail(data);
+
+    // If the e-mail did not actually go out, tell the client exactly why so it
+    // can be shown on the site. Do NOT pretend the submission succeeded.
+    if (!emailResult.emailSent) {
+      console.error("Contact form NOT delivered - email failed:", emailResult.error);
       return NextResponse.json(
-        { error: "Bitte füllen Sie alle Pflichtfelder aus." },
-        { status: 400 }
+        {
+          success: false,
+          error:
+            emailResult.error ||
+            "Ihre Anfrage konnte nicht gesendet werden. Bitte versuchen Sie es erneut oder rufen Sie uns an.",
+          notificationsSent: { sheets: sheetsSuccess, email: false },
+        },
+        { status: 502 },
       );
     }
 
-    // Get tracking data from form (if sent from client)
-    const gclid = formData.get("gclid") as string || "-";
-    const source = formData.get("source") as string || "Direct";
-
-    // Send to Google Sheets (text data only, no files) - don't wait for it
-    sendToGoogleSheets(data, gclid, source).then(success => {
-      console.log("Google Sheets saved:", success);
-    }).catch(err => {
-      console.error("Google Sheets error:", err);
-    });
-
-    // Collect all files to upload - separate images from documents
-    const imageFiles: File[] = [];
-    const documentFiles: File[] = [];
-
-    console.log("=== FORM DATA ENTRIES ===");
-    for (const [key, value] of formData.entries()) {
-      if (value instanceof File && value.size > 0) {
-        console.log(`File found: ${key} = ${value.name} (${value.size} bytes, type: ${value.type})`);
-
-        if (key.startsWith("image_") || key.startsWith("plan_")) {
-          if (isImageFile(value)) {
-            // Images go to ImgBB
-            imageFiles.push(value);
-          } else {
-            // PDFs and other documents go to Supabase
-            documentFiles.push(value);
-          }
-        }
-      }
-    }
-    console.log(`Total images: ${imageFiles.length}, Total documents: ${documentFiles.length}`);
-    console.log("=========================");
-
-    // Upload files in parallel
-    const uploadedFiles: UploadedFile[] = [];
-    let uploadErrors = 0;
-
-    // Upload images to ImgBB
-    if (imageFiles.length > 0) {
-      console.log(`📤 Starting parallel ImgBB upload of ${imageFiles.length} images...`);
-      const imageResults = await Promise.allSettled(
-        imageFiles.map(file => uploadToImgBB(file))
-      );
-
-      for (const result of imageResults) {
-        if (result.status === "fulfilled" && result.value) {
-          uploadedFiles.push(result.value);
-        } else {
-          uploadErrors++;
-          if (result.status === "rejected") {
-            console.error("ImgBB upload rejected:", result.reason);
-          }
-        }
-      }
-    }
-
-    // Upload documents to Supabase
-    if (documentFiles.length > 0) {
-      console.log(`📤 Starting parallel Supabase upload of ${documentFiles.length} documents...`);
-      const docResults = await Promise.allSettled(
-        documentFiles.map(file => uploadToSupabase(file))
-      );
-
-      for (const result of docResults) {
-        if (result.status === "fulfilled" && result.value) {
-          uploadedFiles.push(result.value);
-        } else {
-          uploadErrors++;
-          if (result.status === "rejected") {
-            console.error("Supabase upload rejected:", result.reason);
-          }
-        }
-      }
-    }
-
-    console.log(`📊 Upload results: ${uploadedFiles.length} successful, ${uploadErrors} failed`);
-
-    // Create email subject
-    const serviceName = serviceNames[data.service] || data.service;
-    const urgencyPrefix = data.urgency === "express" ? "🔴 DRINGEND: " : "";
-    const images = uploadedFiles.filter(f => f.fileType === "image");
-    const documents = uploadedFiles.filter(f => f.fileType === "document");
-    const fileCount = images.length > 0 || documents.length > 0
-      ? ` [${images.length > 0 ? `${images.length} Bilder` : ""}${images.length > 0 && documents.length > 0 ? ", " : ""}${documents.length > 0 ? `${documents.length} Dok.` : ""}]`
-      : "";
-    const failedNote = uploadErrors > 0 ? ` (${uploadErrors} fehlgeschlagen)` : "";
-    const subject = `${urgencyPrefix}Neue Anfrage: ${serviceName} - ${data.name} (${data.city})${fileCount}${failedNote}`;
-
-    // Send email using Resend
-    console.log("📧 Sending email via Resend...");
-    const { data: emailData, error } = await resend.emails.send({
-      from: "KELLER Montage <info@keller-montage.de>",
-      to: [CONTACT_EMAIL],
-      replyTo: data.email || undefined,
-      subject: subject,
-      text: formatFormData(data, uploadedFiles),
-      html: createHtmlEmail(data, uploadedFiles),
-    });
-
-    if (error) {
-      console.error("Resend error:", JSON.stringify(error, null, 2));
-
-      let errorMessage = "E-Mail konnte nicht gesendet werden. Bitte versuchen Sie es erneut.";
-
-      if (error.message?.includes("API key")) {
-        errorMessage = "API-Schlüssel ungültig. Bitte kontaktieren Sie uns telefonisch.";
-      } else if (error.message?.includes("domain") || error.message?.includes("verified")) {
-        errorMessage = "E-Mail-Domain nicht verifiziert. Bitte kontaktieren Sie uns unter +49 160 2255443";
-      } else if (error.message?.includes("rate limit")) {
-        errorMessage = "Zu viele Anfragen. Bitte warten Sie einen Moment.";
-      }
-
-      return NextResponse.json(
-        { error: errorMessage },
-        { status: 500 }
-      );
-    }
-
-    console.log("✅ Email sent successfully:", emailData);
-
-    return NextResponse.json(
-      {
-        success: true,
-        message: "Anfrage erfolgreich gesendet!",
-        uploadedImages: images.length,
-        uploadedDocuments: documents.length,
-        uploadErrors: uploadErrors
+    console.log("Contact form delivered successfully via email");
+    return NextResponse.json({
+      success: true,
+      submissionId: data.submissionId,
+      imagesReceived: data.fileUrls.length,
+      attachmentsReceived: data.fileAttachments?.length || 0,
+      notificationsSent: {
+        sheets: sheetsSuccess,
+        email: emailResult.emailSent,
       },
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error("Contact form error:", error);
+    });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("API error:", message);
     return NextResponse.json(
-      { error: "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut." },
-      { status: 500 }
+      { success: false, error: `Serverfehler: ${message}` },
+      { status: 500 },
     );
   }
 }

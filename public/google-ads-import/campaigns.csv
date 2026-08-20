@@ -1,0 +1,5 @@
+Account,Campaign,Campaign Type,Campaign Status,Budget,Budget type,Bid Strategy Type,Networks,Languages,Locations,Location Radius,Start Date,End Date
+743-891-1939,DE_Search_Möbelmontage_Nürnberg,Search,Enabled,20,Daily,Manual CPC,Google Search,de;en,Nürnberg (Germany),65km,2024-01-15,
+743-891-1939,DE_Search_Küchenmontage_Nürnberg,Search,Enabled,15,Daily,Manual CPC,Google Search,de;en,Nürnberg (Germany),65km,2024-01-15,
+743-891-1939,DE_Search_IKEA_Montage_Nürnberg,Search,Enabled,15,Daily,Manual CPC,Google Search,de;en,Nürnberg (Germany),65km,2024-01-15,
+743-891-1939,DE_Display_Remarketing,Display,Enabled,10,Daily,Manual CPC,Google Display Network,de;en,Nürnberg (Germany),65km,2024-01-15,

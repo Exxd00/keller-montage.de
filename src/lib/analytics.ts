@@ -1,562 +1,406 @@
-// ============================================
-// KELLER MONTAGE - ANALYTICS & TRACKING SYSTEM
-// Google Analytics ID: G-N15LLLP7VV
-// ============================================
+/**
+ * Analytics & Lead Tracking Utility
+ * Supports Google Analytics 4, Facebook Pixel, Google Sheets, and custom events
+ */
 
-export const GA_MEASUREMENT_ID = "G-N15LLLP7VV";
+import { getTrackingData, getGCLID, getCurrentPage, getTrafficSource } from './tracking';
 
-// Declare gtag type
-type GtagCommand = 'config' | 'event' | 'js' | 'set';
-interface GtagItem {
-  item_id?: string;
-  item_name?: string;
-  item_category?: string;
-  price?: number;
-  quantity?: number;
+const EVENT_NAMESPACE = 'moebelmontage_nuer';
+
+const eventNames: Partial<Record<EventAction, string>> = {
+  form_submit: `${EVENT_NAMESPACE}_form_submit`,
+  form_start: `${EVENT_NAMESPACE}_form_start`,
+  form_step: `${EVENT_NAMESPACE}_form_step`,
+  form_error: `${EVENT_NAMESPACE}_form_error`,
+  phone_click: `${EVENT_NAMESPACE}_phone_click`,
+  phone_confirmed: `${EVENT_NAMESPACE}_phone_click`,
+  whatsapp_click: `${EVENT_NAMESPACE}_whatsapp_open`,
+  whatsapp_confirmed: `${EVENT_NAMESPACE}_whatsapp_confirm`,
+  email_click: `${EVENT_NAMESPACE}_email_click`,
+  cta_click: `${EVENT_NAMESPACE}_primary_cta_click`,
+};
+
+// Send event to Google Sheets via API
+// Only called for confirmed actions: phone_call, whatsapp, form
+async function sendToGoogleSheets(
+  eventType: 'phone_call' | 'whatsapp' | 'form',
+  source: string,
+  phoneNumber?: string
+): Promise<void> {
+  try {
+    // Get tracking data
+    const tracking = getTrackingData();
+
+    await fetch('/api/track-event', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        eventType,
+        source,
+        phoneNumber,
+        // Tracking data
+        gclid: tracking.gclid,
+        trafficSource: tracking.source,
+        page: tracking.page,
+      }),
+    });
+  } catch (error) {
+    console.error('Failed to send event to Google Sheets:', error);
+  }
 }
-type GtagEventParams = Record<string, string | number | boolean | string[] | GtagItem[] | undefined>;
 
 declare global {
   interface Window {
-    gtag: (command: GtagCommand, targetId: string, params?: GtagEventParams) => void;
-    dataLayer: GtagEventParams[];
+    gtag?: (...args: unknown[]) => void;
+    fbq?: (...args: unknown[]) => void;
+    dataLayer?: unknown[];
   }
 }
 
-// ============================================
-// CORE TRACKING FUNCTIONS
-// ============================================
+// Event types for type safety
+export type EventCategory =
+  | 'contact'
+  | 'engagement'
+  | 'navigation'
+  | 'conversion'
+  | 'lead';
 
-/**
- * Track a custom event to Google Analytics
- */
-export function trackEvent(
-  eventName: string,
-  eventParams: GtagEventParams = {}
-) {
-  if (typeof window !== "undefined" && window.gtag) {
-    window.gtag("event", eventName, eventParams);
-    console.log("📊 Event tracked:", eventName, eventParams);
-  }
+export type EventAction =
+  | 'form_submit'
+  | 'form_start'
+  | 'form_step'
+  | 'form_error'
+  | 'phone_click'
+  | 'phone_confirmed'
+  | 'phone_cancelled'
+  | 'whatsapp_click'
+  | 'whatsapp_confirmed'
+  | 'whatsapp_cancelled'
+  | 'email_click'
+  | 'cta_click'
+  | 'service_view'
+  | 'city_view'
+  | 'scroll_depth'
+  | 'time_on_page'
+  | 'lead_generated';
+
+interface TrackEventParams {
+  action: EventAction;
+  category: EventCategory;
+  label?: string;
+  value?: number;
+  customParams?: Record<string, unknown>;
 }
 
-/**
- * Track a page view
- */
-export function trackPageView(url: string, title?: string) {
-  if (typeof window !== "undefined" && window.gtag) {
-    window.gtag("config", GA_MEASUREMENT_ID, {
-      page_path: url,
-      page_title: title || document.title,
-    });
-  }
-}
-
-// ============================================
-// 1. LEAD GENERATION EVENTS (HIGH VALUE)
-// ============================================
-
-/**
- * Track phone call click - Primary conversion
- */
-export function trackPhoneCall(phoneNumber: string, source?: string) {
-  trackEvent("generate_lead", {
-    event_category: "Lead",
-    event_label: "Phone Call",
-    value: 50,
-    currency: "EUR",
-    lead_source: "phone",
-    phone_number: phoneNumber,
-    click_source: source || "unknown",
-  });
-
-  trackEvent("click_to_call", {
-    event_category: "Contact",
-    event_label: phoneNumber,
-    phone_number: phoneNumber,
-    page_location: typeof window !== "undefined" ? window.location.pathname : "",
-  });
-
-  // Google Ads conversion
-  trackEvent("conversion", {
-    send_to: GA_MEASUREMENT_ID,
-    event_category: "Conversion",
-    event_label: "Phone Call Initiated",
-    value: 50,
-    currency: "EUR",
-  });
-}
-
-/**
- * Track WhatsApp click - Primary conversion
- */
-export function trackWhatsAppClick(source?: string) {
-  trackEvent("generate_lead", {
-    event_category: "Lead",
-    event_label: "WhatsApp",
-    value: 50,
-    currency: "EUR",
-    lead_source: "whatsapp",
-    click_source: source || "unknown",
-  });
-
-  trackEvent("whatsapp_click", {
-    event_category: "Contact",
-    event_label: "WhatsApp Message",
-    page_location: typeof window !== "undefined" ? window.location.pathname : "",
-  });
-
-  // Google Ads conversion
-  trackEvent("conversion", {
-    send_to: GA_MEASUREMENT_ID,
-    event_category: "Conversion",
-    event_label: "WhatsApp Click",
-    value: 50,
-    currency: "EUR",
-  });
-}
-
-/**
- * Track form submission - Primary conversion
- */
-export function trackFormSubmission(formData: {
+interface TrackLeadParams {
+  source: string;
   service?: string;
   city?: string;
-  formName?: string;
-}) {
-  // Main lead event
-  trackEvent("generate_lead", {
-    event_category: "Lead",
-    event_label: "Form Submission",
-    value: 100,
-    currency: "EUR",
-    lead_source: "contact_form",
-    service_type: formData.service || "unknown",
-    city: formData.city || "unknown",
-  });
-
-  // Form submit event
-  trackEvent("form_submit", {
-    event_category: "Form",
-    event_label: formData.formName || "Contact Form",
-    form_name: formData.formName || "contact_form",
-    service: formData.service || "unknown",
-  });
-
-  // Conversion event for Google Ads
-  trackEvent("conversion", {
-    send_to: GA_MEASUREMENT_ID,
-    event_category: "Conversion",
-    event_label: "Lead Form Submitted",
-    value: 100,
-    currency: "EUR",
-  });
+  phone?: string;
+  email?: string;
+  value?: number;
 }
 
-// ============================================
-// 2. THANK YOU PAGE EVENTS (CONVERSION COMPLETE)
-// ============================================
-
-/**
- * Track thank you page view - Conversion confirmation
- */
-export function trackThankYouPage() {
-  // Thank you page view
-  trackEvent("thank_you_page", {
-    event_category: "Conversion",
-    event_label: "Thank You Page View",
-    value: 100,
-    currency: "EUR",
-  });
-
-  // Purchase equivalent for lead value
-  trackEvent("purchase", {
-    transaction_id: "LEAD_" + Date.now(),
-    value: 100,
-    currency: "EUR",
-    items: [
-      {
-        item_name: "Lead - Küchenmontage Anfrage",
-        item_category: "Lead",
-        price: 100,
-        quantity: 1,
-      },
-    ],
-  });
-
-  // Conversion complete event
-  trackEvent("conversion_complete", {
-    event_category: "Conversion",
-    event_label: "Lead Submitted Successfully",
-    send_to: GA_MEASUREMENT_ID,
-  });
-}
-
-// ============================================
-// 3. ENGAGEMENT EVENTS
-// ============================================
-
-/**
- * Track service card click
- */
-export function trackServiceClick(serviceName: string) {
-  trackEvent("select_content", {
-    event_category: "Engagement",
-    event_label: serviceName,
-    content_type: "service",
-    item_id: serviceName,
-  });
-
-  trackEvent("service_interest", {
-    event_category: "Services",
-    event_label: serviceName,
-    service_name: serviceName,
-  });
-}
-
-/**
- * Track CTA button click
- */
-export function trackCTAClick(ctaName: string, ctaLocation?: string) {
-  trackEvent("cta_click", {
-    event_category: "Engagement",
-    event_label: ctaName,
-    cta_name: ctaName,
-    cta_location: ctaLocation || "unknown",
-    page_location: typeof window !== "undefined" ? window.location.pathname : "",
-  });
-}
-
-/**
- * Track FAQ interaction
- */
-export function trackFAQInteraction(question: string, isOpen: boolean) {
-  trackEvent("faq_interaction", {
-    event_category: "Engagement",
-    event_label: question,
-    content_type: "faq",
-    action: isOpen ? "open" : "close",
-  });
-}
-
-/**
- * Track scroll depth
- */
-export function trackScrollDepth(depth: number) {
-  trackEvent("scroll_depth", {
-    event_category: "Engagement",
-    event_label: `${depth}%`,
-    value: depth,
-  });
-}
-
-/**
- * Track time on page
- */
-export function trackTimeOnPage(seconds: number) {
-  trackEvent("time_on_page", {
-    event_category: "Engagement",
-    event_label: `${seconds} seconds`,
-    value: seconds,
-  });
-}
-
-// ============================================
-// 4. FORM INTERACTION EVENTS
-// ============================================
-
-/**
- * Track form field focus
- */
-export function trackFormFieldFocus(fieldName: string, formName?: string) {
-  trackEvent("form_field_focus", {
-    event_category: "Form",
-    event_label: fieldName,
-    form_name: formName || "contact_form",
-    field_name: fieldName,
-  });
-}
-
-/**
- * Track form step change
- */
-export function trackFormStep(step: number, totalSteps: number) {
-  trackEvent("form_progress", {
-    event_category: "Form",
-    event_label: `Step ${step} of ${totalSteps}`,
-    step_number: step,
-    total_steps: totalSteps,
-  });
-}
-
-/**
- * Track form error
- */
-export function trackFormError(fieldName: string, errorMessage: string) {
-  trackEvent("form_error", {
-    event_category: "Form",
-    event_label: fieldName,
-    error_field: fieldName,
-    error_message: errorMessage,
-  });
-}
-
-// ============================================
-// 5. NAVIGATION EVENTS
-// ============================================
-
-/**
- * Track outbound link click
- */
-export function trackOutboundLink(url: string) {
-  trackEvent("outbound_link", {
-    event_category: "Outbound",
-    event_label: url,
-    transport_type: "beacon",
-  });
-}
-
-/**
- * Track internal navigation
- */
-export function trackNavigation(from: string, to: string) {
-  trackEvent("internal_navigation", {
-    event_category: "Navigation",
-    event_label: to,
-    from_page: from,
-    to_page: to,
-  });
-}
-
-// ============================================
-// 6. E-COMMERCE-LIKE EVENTS (for lead tracking)
-// ============================================
-
-/**
- * Track service view (like product view)
- */
-export function trackServiceView(serviceName: string, serviceId: string) {
-  trackEvent("view_item", {
-    event_category: "Services",
-    event_label: serviceName,
-    items: [
-      {
-        item_id: serviceId,
-        item_name: serviceName,
-        item_category: "Dienstleistung",
-      },
-    ],
-  });
-}
-
-/**
- * Track begin checkout (form start)
- */
-export function trackFormStart(service?: string) {
-  trackEvent("begin_checkout", {
-    event_category: "Form",
-    event_label: "Form Started",
-    service_type: service || "unknown",
-    items: [
-      {
-        item_name: service || "Anfrage",
-        item_category: "Lead",
-      },
-    ],
-  });
-}
-
-// ============================================
-// 7. USER INTERACTION EVENTS
-// ============================================
-
-/**
- * Track image gallery interaction
- */
-export function trackGalleryInteraction(action: string, imageName?: string) {
-  trackEvent("gallery_interaction", {
-    event_category: "Engagement",
-    event_label: action,
-    image_name: imageName || "unknown",
-  });
-}
-
-/**
- * Track testimonial view
- */
-export function trackTestimonialView(index: number, customerName?: string) {
-  trackEvent("testimonial_view", {
-    event_category: "Engagement",
-    event_label: `Testimonial ${index + 1}`,
-    testimonial_index: index,
-    customer_name: customerName || "anonymous",
-  });
-}
-
-/**
- * Track video interaction
- */
-export function trackVideoInteraction(
-  action: "play" | "pause" | "complete",
-  videoName?: string
-) {
-  trackEvent("video_interaction", {
-    event_category: "Engagement",
-    event_label: action,
-    video_action: action,
-    video_name: videoName || "unknown",
-  });
-}
-
-// ============================================
-// 8. CITY/LOCATION EVENTS
-// ============================================
-
-/**
- * Track city selection
- */
-export function trackCitySelection(cityName: string) {
-  trackEvent("city_selected", {
-    event_category: "Location",
-    event_label: cityName,
-    city_name: cityName,
-  });
-}
-
-/**
- * Track service area view
- */
-export function trackServiceAreaView(cityName: string, serviceName: string) {
-  trackEvent("service_area_view", {
-    event_category: "Location",
-    event_label: `${cityName} - ${serviceName}`,
-    city_name: cityName,
-    service_name: serviceName,
-  });
-}
-
-// ============================================
-// UTILITY FUNCTIONS
-// ============================================
-
-/**
- * Initialize analytics event listeners (call once on app load)
- */
-export function initializeAnalyticsListeners() {
-  if (typeof window === "undefined") return;
-
-  // Scroll depth tracking
-  const scrollDepths = [25, 50, 75, 90, 100];
-  const scrolledDepths: number[] = [];
-
-  window.addEventListener("scroll", () => {
-    const scrollPercent = Math.round(
-      (window.scrollY /
-        (document.documentElement.scrollHeight - window.innerHeight)) *
-        100
-    );
-
-    scrollDepths.forEach((depth) => {
-      if (scrollPercent >= depth && !scrolledDepths.includes(depth)) {
-        scrolledDepths.push(depth);
-        trackScrollDepth(depth);
-      }
+// Track general events
+export function trackEvent({ action, category, label, value, customParams }: TrackEventParams): void {
+  const eventName = eventNames[action] || `${EVENT_NAMESPACE}_${action}`;
+  // Google Analytics 4
+  if (typeof window !== 'undefined' && window.gtag) {
+    window.gtag('event', eventName, {
+      event_category: category,
+      event_label: label,
+      value: value,
+      ...customParams,
     });
-  });
+  }
 
-  // Time on page tracking
-  const pageStartTime = Date.now();
-  const timeIntervals = [30, 60, 120, 300];
-  const trackedIntervals: number[] = [];
+  // Facebook Pixel
+  if (typeof window !== 'undefined' && window.fbq) {
+    const fbEvent = mapToFacebookEvent(action);
+    if (fbEvent) {
+      window.fbq('track', fbEvent, {
+        content_category: category,
+        content_name: label,
+        value: value,
+        ...customParams,
+      });
+    }
+  }
 
-  setInterval(() => {
-    const timeOnPage = Math.floor((Date.now() - pageStartTime) / 1000);
+  // Console log in development
+  if (process.env.NODE_ENV === 'development') {
+    console.log('📊 Event tracked:', { eventName, category, label, value, customParams });
+  }
+}
 
-    timeIntervals.forEach((interval) => {
-      if (timeOnPage >= interval && !trackedIntervals.includes(interval)) {
-        trackedIntervals.push(interval);
-        trackTimeOnPage(interval);
-      }
+// Track lead generation
+export function trackLead({ source, service, city, phone, email, value }: TrackLeadParams): void {
+  const leadData = {
+    lead_source: source,
+    service_type: service,
+    city: city,
+    has_phone: !!phone,
+    has_email: !!email,
+    estimated_value: value || 59, // Default minimum value
+    timestamp: new Date().toISOString(),
+  };
+
+  // Google Analytics 4 - Lead event
+  if (typeof window !== 'undefined' && window.gtag) {
+    window.gtag('event', 'generate_lead', {
+      currency: 'EUR',
+      value: value || 59,
+      ...leadData,
     });
-  }, 5000);
+  }
 
-  // Phone click tracking
-  document.addEventListener("click", (e) => {
-    const link = (e.target as HTMLElement).closest('a[href^="tel:"]');
-    if (link) {
-      const phoneNumber =
-        link.getAttribute("href")?.replace("tel:", "") || "";
-      const source = link.getAttribute("data-source") || "unknown";
-      trackPhoneCall(phoneNumber, source);
-    }
-  });
+  // Facebook Pixel - Lead event
+  if (typeof window !== 'undefined' && window.fbq) {
+    window.fbq('track', 'Lead', {
+      content_name: service || 'General Inquiry',
+      content_category: source,
+      value: value || 59,
+      currency: 'EUR',
+    });
+  }
 
-  // WhatsApp click tracking
-  document.addEventListener("click", (e) => {
-    const link = (e.target as HTMLElement).closest('a[href*="wa.me"]');
-    if (link) {
-      const source = link.getAttribute("data-source") || "unknown";
-      trackWhatsAppClick(source);
-    }
-  });
+  // Store lead in localStorage for retargeting
+  try {
+    const existingLeads = JSON.parse(localStorage.getItem('leads') || '[]');
+    existingLeads.push(leadData);
+    localStorage.setItem('leads', JSON.stringify(existingLeads.slice(-10))); // Keep last 10
+  } catch {
+    // Ignore storage errors
+  }
 
-  // Service card click tracking
-  document.addEventListener("click", (e) => {
-    const serviceCard = (e.target as HTMLElement).closest("[data-service]");
-    if (serviceCard) {
-      const serviceName = serviceCard.getAttribute("data-service") || "";
-      trackServiceClick(serviceName);
-    }
-  });
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🎯 Lead tracked:', leadData);
+  }
+}
 
-  // CTA button click tracking
-  document.addEventListener("click", (e) => {
-    const ctaButton = (e.target as HTMLElement).closest("[data-cta]");
-    if (ctaButton) {
-      const ctaName = ctaButton.getAttribute("data-cta") || "";
-      const ctaLocation = ctaButton.getAttribute("data-cta-location") || "";
-      trackCTAClick(ctaName, ctaLocation);
-    }
-  });
-
-  // FAQ interaction tracking
-  document.addEventListener("click", (e) => {
-    const faqItem = (e.target as HTMLElement).closest("[data-faq]");
-    if (faqItem) {
-      const question = faqItem.getAttribute("data-faq") || "";
-      const isOpen = faqItem.getAttribute("data-faq-open") === "true";
-      trackFAQInteraction(question, !isOpen);
-    }
-  });
-
-  // Form field focus tracking
-  document.addEventListener(
-    "focus",
-    (e) => {
-      const target = e.target as HTMLElement;
-      if (
-        target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.tagName === "SELECT"
-      ) {
-        const fieldName =
-          (target as HTMLInputElement).name ||
-          (target as HTMLInputElement).id ||
-          "unknown";
-        trackFormFieldFocus(fieldName);
-      }
+// Track phone call clicks (GA4 only, no Google Sheets)
+export function trackPhoneClick(phoneNumber: string, source: string): void {
+  trackEvent({
+    action: 'phone_click',
+    category: 'contact',
+    label: source,
+    customParams: {
+      phone_number: phoneNumber,
+      click_source: source,
     },
-    true
-  );
+  });
+}
 
-  // Outbound link tracking
-  document.addEventListener("click", (e) => {
-    const link = (e.target as HTMLElement).closest('a[href^="http"]');
-    if (link) {
-      const href = link.getAttribute("href") || "";
-      if (!href.includes(window.location.hostname)) {
-        trackOutboundLink(href);
+// Track WhatsApp clicks (GA4 only, no Google Sheets)
+export function trackWhatsAppClick(source: string): void {
+  trackEvent({
+    action: 'whatsapp_click',
+    category: 'contact',
+    label: source,
+  });
+}
+
+// Track WhatsApp confirmation - SENDS TO GOOGLE SHEETS
+export function trackWhatsAppConfirmed(source: string): void {
+  trackEvent({
+    action: 'whatsapp_confirmed',
+    category: 'conversion',
+    label: source,
+  });
+
+  // Send to Google Sheets as 'whatsapp' event type
+  sendToGoogleSheets('whatsapp', source);
+
+  trackLead({
+    source: 'whatsapp',
+    value: 40,
+  });
+
+}
+
+// Track WhatsApp cancellation (GA4 only, no Google Sheets)
+export function trackWhatsAppCancelled(source: string): void {
+  trackEvent({
+    action: 'whatsapp_cancelled',
+    category: 'engagement',
+    label: source,
+  });
+}
+
+// Track phone confirmation - SENDS TO GOOGLE SHEETS
+export function trackPhoneConfirmed(phoneNumber: string, source: string): void {
+  trackEvent({
+    action: 'phone_confirmed',
+    category: 'conversion',
+    label: source,
+    customParams: {
+      phone_number: phoneNumber,
+      click_source: source,
+    },
+  });
+
+  // Send to Google Sheets as 'phone_call' event type
+  sendToGoogleSheets('phone_call', source, phoneNumber);
+
+  trackLead({
+    source: 'phone_call',
+    value: 50,
+  });
+
+}
+
+// Track phone cancellation (GA4 only, no Google Sheets)
+export function trackPhoneCancelled(source: string): void {
+  trackEvent({
+    action: 'phone_cancelled',
+    category: 'engagement',
+    label: source,
+  });
+}
+
+// Track CTA button clicks
+export function trackCTAClick(ctaName: string, location: string): void {
+  trackEvent({
+    action: 'cta_click',
+    category: 'engagement',
+    label: `${ctaName} - ${location}`,
+  });
+}
+
+// Track form interactions
+export function trackFormStart(formName: string): void {
+  trackEvent({
+    action: 'form_start',
+    category: 'engagement',
+    label: formName,
+  });
+}
+
+export function trackFormSubmit(formName: string, service?: string, city?: string): void {
+  trackEvent({
+    action: 'form_submit',
+    category: 'conversion',
+    label: formName,
+    customParams: {
+      service_type: service,
+      city: city,
+    },
+  });
+
+  trackLead({
+    source: formName,
+    service: service,
+    city: city,
+    value: getServiceValue(service),
+  });
+}
+
+// Track page/service views
+export function trackServiceView(serviceName: string): void {
+  trackEvent({
+    action: 'service_view',
+    category: 'engagement',
+    label: serviceName,
+  });
+}
+
+export function trackCityView(cityName: string): void {
+  trackEvent({
+    action: 'city_view',
+    category: 'engagement',
+    label: cityName,
+  });
+}
+
+// Track scroll depth
+export function trackScrollDepth(percentage: number): void {
+  if (percentage === 25 || percentage === 50 || percentage === 75 || percentage === 100) {
+    trackEvent({
+      action: 'scroll_depth',
+      category: 'engagement',
+      label: `${percentage}%`,
+      value: percentage,
+    });
+  }
+}
+
+// Helper: Map events to Facebook standard events
+function mapToFacebookEvent(action: EventAction): string | null {
+  const mapping: Partial<Record<EventAction, string>> = {
+    form_submit: 'Lead',
+    phone_click: 'Contact',
+    whatsapp_click: 'Contact',
+    cta_click: 'InitiateCheckout',
+    service_view: 'ViewContent',
+  };
+  return mapping[action] || null;
+}
+
+// Helper: Get estimated service value
+function getServiceValue(service?: string): number {
+  if (!service) return 59;
+
+  const values: Record<string, number> = {
+    lieferungen: 39,
+    moebelmontage: 89,
+    kuechenmontage: 249,
+  };
+
+  return values[service] || 59;
+}
+
+// Initialize scroll tracking
+export function initScrollTracking(): void {
+  if (typeof window === 'undefined') return;
+
+  let maxScroll = 0;
+  const thresholds = [25, 50, 75, 100];
+  const tracked = new Set<number>();
+
+  const handleScroll = () => {
+    const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+    const scrollPercent = Math.round((window.scrollY / scrollHeight) * 100);
+
+    if (scrollPercent > maxScroll) {
+      maxScroll = scrollPercent;
+
+      for (const threshold of thresholds) {
+        if (scrollPercent >= threshold && !tracked.has(threshold)) {
+          tracked.add(threshold);
+          trackScrollDepth(threshold);
+        }
       }
     }
-  });
+  };
+
+  window.addEventListener('scroll', handleScroll, { passive: true });
+}
+
+// Initialize time on page tracking
+export function initTimeTracking(): void {
+  if (typeof window === 'undefined') return;
+
+  const startTime = Date.now();
+  const intervals = [30, 60, 120, 300]; // seconds
+  const tracked = new Set<number>();
+
+  const checkTime = () => {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+
+    for (const interval of intervals) {
+      if (elapsed >= interval && !tracked.has(interval)) {
+        tracked.add(interval);
+        trackEvent({
+          action: 'time_on_page',
+          category: 'engagement',
+          label: `${interval}s`,
+          value: interval,
+        });
+      }
+    }
+  };
+
+  setInterval(checkTime, 5000);
 }

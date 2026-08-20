@@ -1,158 +1,128 @@
-import Link from "next/link";
-import Image from "next/image";
-import { Phone, Mail, Clock, MapPin, ChevronRight } from "lucide-react";
-import { BUSINESS, NAV_LINKS, SERVICES, MAIN_CITIES } from "@/lib/constants";
+"use client";
 
-export function Footer() {
+import Link from "next/link";
+import { Phone, Mail, MapPin, Clock } from "lucide-react";
+import { businessInfo, services } from "@/lib/data";
+
+const legalLinks = [
+  { name: "Impressum", href: "/impressum" },
+  { name: "Datenschutz", href: "/datenschutz" },
+];
+
+export default function Footer() {
   return (
     <footer className="bg-gray-900 dark:bg-gray-950 text-white" role="contentinfo">
-      <div className="container-max section-padding">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 lg:gap-12">
-          {/* Company Info */}
-          <div className="col-span-2 md:col-span-1">
-            <div className="flex items-center gap-2 mb-4">
-<Image
-                src="/logo_night_mode_corrected.png"
-                alt={BUSINESS.name}
-                width={80}
-                height={40}
-                className="h-9 w-auto"
-              />
-              <div>
-                <span className="text-lg font-bold">{BUSINESS.name}</span>
-                <p className="text-xs text-gray-400">{BUSINESS.tagline}</p>
+      <div className="container-max py-8 lg:py-10">
+        {/* Main Content - Compact Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+          {/* Company Info & Contact */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-9 h-9 rounded-lg gradient-bg flex items-center justify-center">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  className="w-4 h-4 text-white"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M9 22V12H15V22"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+              <span className="font-bold">{businessInfo.displayName}</span>
+            </div>
+            <p className="text-gray-400 text-sm mb-3">
+              Professionelle Möbel- & Küchenmontage in Nürnberg und Umgebung.
+            </p>
+            <div className="flex flex-col gap-1.5 text-sm">
+              <a
+                href={`tel:${businessInfo.phone}`}
+                className="flex items-center gap-2 text-gray-300 hover:text-primary transition-colors no-underline"
+              >
+                <Phone className="w-4 h-4 text-primary" />
+                {businessInfo.phone}
+              </a>
+              <a
+                href={`mailto:${businessInfo.email}`}
+                className="flex items-center gap-2 text-gray-300 hover:text-primary transition-colors no-underline"
+              >
+                <Mail className="w-4 h-4 text-primary" />
+                {businessInfo.email}
+              </a>
+            </div>
+          </div>
+
+          {/* Services - Inline */}
+          <nav aria-label="Leistungen">
+            <h2 className="font-bold mb-3 text-white text-sm">Leistungen</h2>
+            <div className="flex flex-wrap gap-2">
+              {services.map((service) => (
+                <Link
+                  key={service.id}
+                  href={`/service/${service.slug}`}
+                  className="text-xs text-gray-400 hover:text-primary transition-colors bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded-full no-underline"
+                >
+                  {service.shortName}
+                </Link>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2 mt-3">
+              <Link href="/leistungen" className="text-xs text-primary hover:text-primary/80 no-underline">
+                Alle Leistungen
+              </Link>
+              <span className="text-gray-600">|</span>
+              <Link href="/staedte" className="text-xs text-primary hover:text-primary/80 no-underline">
+                Alle Städte
+              </Link>
+              <span className="text-gray-600">|</span>
+              <Link href="/kontakt" className="text-xs text-primary hover:text-primary/80 no-underline">
+                Kontakt
+              </Link>
+            </div>
+          </nav>
+
+          {/* Working Hours & Location */}
+          <div>
+            <h2 className="font-bold mb-3 text-white text-sm">Erreichbarkeit</h2>
+            <div className="flex flex-col gap-2 text-sm text-gray-400">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-primary" />
+                <span>{businessInfo.workingHours.daily}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-primary" />
+                <span>{businessInfo.address.city}, {businessInfo.address.state}</span>
               </div>
             </div>
-            <p className="text-gray-400 text-sm mb-4">{BUSINESS.description}</p>
-            <p className="text-gray-500 text-xs">Rechnung mit ausgewiesener MwSt.</p>
-            <div className="space-y-2 text-sm mt-4">
-              <a
-                href={`tel:${BUSINESS.phone}`}
-                className="flex items-center gap-2 text-gray-300 hover:text-primary transition-colors py-2 no-underline min-h-[44px]"
-                aria-label={`Anrufen: ${BUSINESS.phone}`}
-              >
-                <Phone className="w-4 h-4" />
-                {BUSINESS.phoneDisplay}
-              </a>
-              <a
-                href={`mailto:${BUSINESS.email}`}
-                className="flex items-center gap-2 text-gray-300 hover:text-primary transition-colors py-2 no-underline min-h-[44px]"
-                aria-label={`E-Mail senden an: ${BUSINESS.email}`}
-              >
-                <Mail className="w-4 h-4" />
-                {BUSINESS.email}
-              </a>
-            </div>
           </div>
-
-          {/* Navigation */}
-          <nav aria-label="Schnelllinks">
-            <h2 className="font-bold mb-4 text-white text-base">Navigation</h2>
-            <ul className="space-y-1">
-              {NAV_LINKS.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-gray-400 hover:text-primary transition-colors flex items-center gap-1 py-2 no-underline min-h-[44px]"
-                  >
-                    <ChevronRight className="w-3 h-3" />
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
-
-          {/* Services */}
-          <nav aria-label="Leistungen">
-            <h2 className="font-bold mb-4 text-white text-base">Leistungen</h2>
-            <ul className="space-y-1">
-              {SERVICES.map((service) => (
-                <li key={service.slug}>
-                  <Link
-                    href={`/service/${service.slug}`}
-                    className="text-sm text-gray-400 hover:text-primary transition-colors flex items-center gap-1 py-2 no-underline min-h-[44px]"
-                  >
-                    <ChevronRight className="w-3 h-3" />
-                    {service.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
-
-          {/* Cities */}
-          <nav aria-label="Städte">
-            <h2 className="font-bold mb-4 text-white text-base">Städte</h2>
-            <ul className="space-y-1">
-              {MAIN_CITIES.slice(0, 6).map((city) => (
-                <li key={city.slug}>
-                  <Link
-                    href={`/${city.slug}`}
-                    className="text-sm text-gray-400 hover:text-primary transition-colors flex items-center gap-1 py-2 no-underline min-h-[44px]"
-                  >
-                    <ChevronRight className="w-3 h-3" />
-                    {city.name}
-                  </Link>
-                </li>
-              ))}
-              <li>
-                <Link
-                  href="/staedte"
-                  className="text-sm text-primary hover:text-primary/80 transition-colors flex items-center gap-1 font-medium py-2 no-underline min-h-[44px]"
-                >
-                  <ChevronRight className="w-3 h-3" />
-                  Alle Städte
-                </Link>
-              </li>
-            </ul>
-          </nav>
         </div>
 
-        {/* Info Bar */}
-        <div className="mt-8 pt-8 border-t border-gray-800">
-          <div className="flex flex-wrap items-center gap-4 md:gap-8 text-sm text-gray-400">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-primary" />
-              <span>{BUSINESS.openingHours.display}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-primary" />
-              <span>{BUSINESS.address}</span>
-            </div>
-          </div>
-          <p className="text-xs text-gray-500 mt-4">
-            Regionaler Montageservice in Nürnberg, Fürth, Erlangen und Umgebung.
-          </p>
-        </div>
-      </div>
-
-      {/* Bottom Bar */}
-      <div className="border-t border-gray-800">
-        <div className="container-max py-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-500">
-            <p>© {new Date().getFullYear()} {BUSINESS.fullName}. Alle Rechte vorbehalten.</p>
-            <nav aria-label="Rechtliche Links">
-              <ul className="flex items-center gap-4">
-                <li>
-                  <Link
-                    href="/impressum"
-                    className="hover:text-primary transition-colors py-2 no-underline min-h-[44px] inline-flex items-center"
-                  >
-                    Impressum
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/datenschutz"
-                    className="hover:text-primary transition-colors py-2 no-underline min-h-[44px] inline-flex items-center"
-                  >
-                    Datenschutz
-                  </Link>
-                </li>
-              </ul>
-            </nav>
-          </div>
+        {/* Bottom Bar - Compact */}
+        <div className="mt-6 pt-4 border-t border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500">
+          <p>© {new Date().getFullYear()} {businessInfo.name}</p>
+          <nav aria-label="Rechtliche Links" className="flex items-center gap-4">
+            {legalLinks.map((link) => (
+              <Link
+                key={link.name}
+                href={link.href}
+                className="hover:text-primary transition-colors no-underline"
+              >
+                {link.name}
+              </Link>
+            ))}
+          </nav>
         </div>
       </div>
     </footer>

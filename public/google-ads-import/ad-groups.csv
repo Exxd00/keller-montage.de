@@ -1,0 +1,11 @@
+Account,Campaign,Ad Group,Ad Group Type,Ad Group Status,Max CPC,Target CPA
+743-891-1939,DE_Search_Möbelmontage_Nürnberg,AG_Möbelmontage_Exact,Standard,Enabled,1.50,
+743-891-1939,DE_Search_Möbelmontage_Nürnberg,AG_Möbelmontage_Phrase,Standard,Enabled,1.20,
+743-891-1939,DE_Search_Möbelmontage_Nürnberg,AG_Möbelaufbau_Exact,Standard,Enabled,1.50,
+743-891-1939,DE_Search_Möbelmontage_Nürnberg,AG_Schrank_Montage,Standard,Enabled,1.30,
+743-891-1939,DE_Search_Küchenmontage_Nürnberg,AG_Küchenmontage_Exact,Standard,Enabled,1.80,
+743-891-1939,DE_Search_Küchenmontage_Nürnberg,AG_Küche_Aufbauen,Standard,Enabled,1.50,
+743-891-1939,DE_Search_IKEA_Montage_Nürnberg,AG_IKEA_Montage_Exact,Standard,Enabled,1.60,
+743-891-1939,DE_Search_IKEA_Montage_Nürnberg,AG_PAX_Montage,Standard,Enabled,1.40,
+743-891-1939,DE_Search_IKEA_Montage_Nürnberg,AG_METOD_Montage,Standard,Enabled,1.40,
+743-891-1939,DE_Display_Remarketing,AG_Remarketing_All,Display,Enabled,0.50,

@@ -1,65 +1,56 @@
-# Keller Montage Project Todos
+# Möbelmontage Nürnberg - Todos
 
-## قيد التنفيذ
-- [ ] **إعداد Resend للإيميلات** - يجب على المستخدم:
-  1. إنشاء حساب في https://resend.com
-  2. الحصول على API Key من https://resend.com/api-keys
-  3. إضافة النطاق `keller-montage.de` وتأكيده
-  4. تحديث ملف `.env.local` بالمفتاح الصحيح
+## Done: Fix email delivery + thank-you protection
+- [x] API `/api/contact`: stop returning fake success; report real email failure reason
+- [x] API: detailed, honest error reasons from Resend (not configured / domain / API key / network)
+- [x] API: accurate notificationsSent reporting (sheets/email)
+- [x] Form: show failure reason on the site (prominent alert + phone/WhatsApp fallback)
+- [x] Form: only redirect to thank-you on real success; fire tracking only after success
+- [x] Thank-you page: one-time sessionStorage flag only; removed ?success=true bypass
+- [x] Created .env.local template with setup instructions
+- [ ] USER ACTION: add real RESEND_API_KEY + RECIPIENT_EMAIL to .env.local so emails arrive
 
-## مكتمل
-- [x] Import repository from GitHub (Apr 23, 2026)
+## Completed
+- [x] Import repository from GitHub into Same
 - [x] Install dependencies with bun
-- [x] Start development server on Same.new
-- [x] إنشاء ملف `.env.local`
-- [x] تحسين رسائل الخطأ في API
-- [x] إصلاح مشكلة التمرير عند الضغط على "Weiter" في النموذج (v4)
-- [x] **إضافة نافذة تأكيد للاتصال والواتساب** (Apr 23, 2026)
-  - تم إنشاء مكون `contact-confirmation-dialog.tsx`
-  - عند الضغط على زر الاتصال/الواتساب تظهر نافذة تأكيد
-  - التتبع يتم فقط بعد تأكيد المستخدم
-- [x] **إضافة تتبع GA4 للأحداث الثلاثة الرئيسية** (Apr 23, 2026)
-  - `phone_call_confirmed` - تأكيد الاتصال
-  - `whatsapp_confirmed` - تأكيد الواتساب
-  - صفحة الشكر (thank_you_page)
-- [x] **تحديث Google Sheets Script** (Apr 23, 2026)
-  - إضافة عمود Kontaktart (نوع التواصل)
-  - إضافة عمود GCLID للتتبع
-  - إضافة عمود Bewertung (تقييم العميل)
-  - السكربت موجود في `.same/google-sheets-script.js`
+- [x] Start dev server (all routes verified 200/redirect)
+- [x] Fix contact form API (handles email failures gracefully)
+- [x] Single form implementation:
+  - Only main page (/) has the actual form
+  - Created FormCTA component for other pages
+  - /kontakt redirects to /#kontakt-form
+  - City pages use FormCTA (links to main form)
+  - Service pages use FormCTA (links to main form)
+  - CTA buttons on /leistungen, /staedte, /arbeiten link to main form
 
-## ملاحظات هامة
+## Current Architecture
+```
+/ (main page)
+└── QuickContactForm (THE ONLY FORM)
 
-### إعداد Google Sheets:
-1. افتح Google Sheets جديد
-2. اذهب إلى Extensions → Apps Script
-3. انسخ السكربت من `.same/google-sheets-script.js`
-4. احفظ وانشر كـ Web App
-5. انسخ URL وأضفه في `.env.local`:
-   ```
-   NEXT_PUBLIC_GOOGLE_SHEETS_URL=https://script.google.com/...
-   ```
+/kontakt → redirect to /#kontakt-form
+/[citySlug] → FormCTA (button to main form)
+/[citySlug]/[serviceSlug] → FormCTA (button to main form)
+/service/[serviceSlug] → FormCTA (button to main form)
+/leistungen → Link to /#kontakt-form
+/staedte → Link to /#kontakt-form
+/arbeiten → Link to /#kontakt-form
+```
 
-### الأحداث الرئيسية في GA4:
-1. **📞 phone_call_confirmed** - عندما يؤكد المستخدم الاتصال
-2. **💬 whatsapp_confirmed** - عندما يؤكد المستخدم الواتساب
-3. **📝 thank_you_page** - عند إرسال النموذج بنجاح
+## FormCTA Features
+- Dynamic title based on city/service context
+- Benefits grid (Festpreise, 24h Antwort, etc.)
+- Prominent CTA button to main form
+- Phone and WhatsApp contact options
+- Availability indicator
 
-### للإصلاح مشكلة الإيميل:
+## Optional Environment Variables (for full functionality)
+The site runs fine without these. Add a `.env.local` to enable extra features:
+- [ ] `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `RECIPIENT_EMAIL` - contact form email notifications
+- [ ] `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_BUCKET_NAME` - file uploads & admin asset storage
+- [ ] `NEXT_PUBLIC_IMGBB_API_KEY` - ImgBB image uploads
+- [ ] `SHEETS_WEBHOOK_URL` - Google Sheets lead logging
 
-1. **احصل على Resend API Key:**
-   - اذهب إلى https://resend.com/api-keys
-   - أنشئ مفتاح جديد
-   - انسخ المفتاح
-
-2. **أضف النطاق في Resend:**
-   - اذهب إلى https://resend.com/domains
-   - أضف `keller-montage.de`
-   - أضف سجلات DNS المطلوبة
-
-3. **حدّث `.env.local`:**
-   ```
-   RESEND_API_KEY=re_your_actual_key_here
-   ```
-
-4. **أعد تشغيل السيرفر**
+## Optional Improvements
+- [ ] Verify Resend domain for email notifications
+- [ ] Add more cities/services

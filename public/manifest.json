@@ -1,53 +1,49 @@
 {
-  "name": "KELLER – DIE KÜCHENWELT",
-  "short_name": "KELLER",
-  "description": "Professionelle Küchenmontage in Nürnberg und Umgebung. IKEA METOD Spezialist, Möbelmontage, Lieferung. Schnell, sauber, zuverlässig zum Festpreis.",
+  "name": "Möbelmontage Nürnberg",
+  "short_name": "Möbelmontage",
+  "description": "Professionelle Möbelmontage & Küchenmontage in Nürnberg. IKEA Spezialist. Festpreise ab 59€.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#FCFAF8",
-  "theme_color": "#E84C5C",
+  "background_color": "#ffffff",
+  "theme_color": "#f97316",
   "orientation": "portrait-primary",
   "scope": "/",
-  "lang": "de-DE",
-  "dir": "ltr",
-  "categories": ["business", "lifestyle", "home"],
+  "lang": "de",
+  "categories": ["business", "lifestyle"],
   "icons": [
     {
-      "src": "/favicon.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
     },
     {
-      "src": "/logo_day_mode_corrected.png",
-      "sizes": "512x512",
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/images/hero-desktop.jpg",
-      "sizes": "1920x1080",
-      "type": "image/jpeg",
-      "form_factor": "wide",
-      "label": "Küchenmontage Startseite"
     }
   ],
   "shortcuts": [
     {
       "name": "Kontakt",
       "short_name": "Kontakt",
-      "description": "Jetzt Angebot anfordern",
+      "description": "Kostenlose Anfrage senden",
       "url": "/kontakt",
-      "icons": [{ "src": "/favicon.png", "sizes": "96x96" }]
+      "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
     },
     {
-      "name": "Küchenmontage",
-      "short_name": "Küchen",
-      "description": "Küchenmontage Service",
-      "url": "/service/kuechenmontage",
-      "icons": [{ "src": "/favicon.png", "sizes": "96x96" }]
+      "name": "Anrufen",
+      "short_name": "Anrufen",
+      "description": "Jetzt anrufen",
+      "url": "tel:+4917620126149",
+      "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
     }
   ],
   "related_applications": [],

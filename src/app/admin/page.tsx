@@ -1,311 +1,273 @@
 "use client";
 
-import { useState } from "react";
-import Image from "next/image";
-import { Lock, Download, Palette, Image as ImageIcon, FileText, Check, Copy, Eye, EyeOff } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { Lock, Unlock, Image, FileText, BarChart3, Settings, ExternalLink } from "lucide-react";
 
-const CORRECT_PASSWORD = "Leavemealone2003+";
-
-// Color Palette
-const COLORS = [
-  { name: "Primary (Coral Red)", hex: "#E84C5C", rgb: "rgb(232, 76, 92)", usage: "Buttons, Akzente, Logo" },
-  { name: "Primary Hover", hex: "#D94C68", rgb: "rgb(217, 76, 104)", usage: "Button Hover Light Mode" },
-  { name: "Primary Hover Dark", hex: "#FF6F8E", rgb: "rgb(255, 111, 142)", usage: "Button Hover Dark Mode" },
-  { name: "Background Light", hex: "#FCFAF8", rgb: "rgb(252, 250, 248)", usage: "Hintergrund Hell" },
-  { name: "Background Dark", hex: "#0F1115", rgb: "rgb(15, 17, 21)", usage: "Hintergrund Dunkel" },
-  { name: "Card Light", hex: "#FFFFFF", rgb: "rgb(255, 255, 255)", usage: "Karten Hell" },
-  { name: "Card Dark", hex: "#1B1F2A", rgb: "rgb(27, 31, 42)", usage: "Karten Dunkel" },
-  { name: "Text Light", hex: "#1F2430", rgb: "rgb(31, 36, 48)", usage: "Text Hell" },
-  { name: "Text Dark", hex: "#FFFFFF", rgb: "rgb(255, 255, 255)", usage: "Text Dunkel" },
-  { name: "Muted Light", hex: "#5F6673", rgb: "rgb(95, 102, 115)", usage: "Sekundärtext Hell" },
-  { name: "Muted Dark", hex: "#AAB0BC", rgb: "rgb(170, 176, 188)", usage: "Sekundärtext Dunkel" },
-  { name: "Border Light", hex: "#F1E7E7", rgb: "rgb(241, 231, 231)", usage: "Rahmen Hell" },
-  { name: "Border Dark", hex: "#232837", rgb: "rgb(35, 40, 55)", usage: "Rahmen Dunkel" },
-];
-
-// Downloadable Files
-const LOGO_FILES = [
-  { name: "Logo Light Mode", path: "/logo_day_mode_corrected.png", description: "PNG Logo für hellen Hintergrund" },
-  { name: "Logo Dark Mode", path: "/logo_night_mode_corrected.png", description: "PNG Logo für dunklen Hintergrund" },
-  { name: "Favicon", path: "/favicon.png", description: "Browser Favicon" },
-  { name: "Logo SVG (Fallback)", path: "/logo.svg", description: "SVG Version" },
-];
-
-const PROJECT_IMAGES = [
-  { name: "Hero Desktop", path: "/images/hero-desktop.jpg" },
-  { name: "Projekt 1 - Vorher", path: "/images/projekt1-ikea-vorher.jpg" },
-  { name: "Projekt 1 - Montage", path: "/images/projekt1-ikea-montage.jpg" },
-  { name: "Projekt 1 - Nachher", path: "/images/projekt1-ikea-nachher.jpg" },
-  { name: "Projekt 2 - Vorher", path: "/images/projekt2-wohnung-vorher.jpg" },
-  { name: "Projekt 2 - Montage", path: "/images/projekt2-wohnung-montage.jpg" },
-  { name: "Projekt 2 - Nachher", path: "/images/projekt2-wohnung-nachher.jpg" },
-  { name: "Projekt 3 - Vorher", path: "/images/projekt3-familie-vorher.jpg" },
-  { name: "Projekt 3 - Montage", path: "/images/projekt3-familie-montage.jpg" },
-  { name: "Qualität Detail", path: "/images/quality-detail.jpg" },
-  { name: "Team Professional", path: "/images/team-professional.jpg" },
-];
-
-const SEO_FILES = [
-  { name: "sitemap.xml", path: "/sitemap.xml", description: "Sitemap für Suchmaschinen" },
-  { name: "robots.txt", path: "/robots.txt", description: "Crawler Anweisungen" },
-  { name: "manifest.json", path: "/manifest.json", description: "PWA Manifest" },
-  { name: "schema.json", path: "/schema.json", description: "Strukturierte Daten (JSON-LD)" },
-];
-
-function ColorCard({ color }: { color: typeof COLORS[0] }) {
-  const [copied, setCopied] = useState(false);
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
-      <div
-        className="w-full h-20 rounded-lg mb-3 border border-gray-200"
-        style={{ backgroundColor: color.hex }}
-      />
-      <h4 className="font-semibold text-sm mb-1">{color.name}</h4>
-      <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
-        <div className="flex items-center justify-between">
-          <span>HEX:</span>
-          <button
-            onClick={() => copyToClipboard(color.hex)}
-            className="flex items-center gap-1 font-mono hover:text-primary"
-          >
-            {color.hex}
-            {copied ? <Check size={12} /> : <Copy size={12} />}
-          </button>
-        </div>
-        <div className="flex items-center justify-between">
-          <span>RGB:</span>
-          <span className="font-mono text-[10px]">{color.rgb}</span>
-        </div>
-        <p className="text-[10px] mt-2 text-gray-500">{color.usage}</p>
-      </div>
-    </div>
-  );
-}
-
-function DownloadCard({ file, type }: { file: { name: string; path: string; description?: string }; type: "logo" | "image" | "seo" }) {
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
-      {type === "logo" || type === "image" ? (
-        <div className="relative w-full h-32 mb-3 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
-          <Image
-            src={file.path}
-            alt={file.name}
-            fill
-            className="object-contain p-2"
-          />
-        </div>
-      ) : (
-        <div className="w-full h-20 mb-3 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-          <FileText size={32} className="text-gray-400" />
-        </div>
-      )}
-      <h4 className="font-semibold text-sm mb-1">{file.name}</h4>
-      {file.description && (
-        <p className="text-xs text-gray-500 mb-3">{file.description}</p>
-      )}
-      <a
-        href={file.path}
-        download
-        className="inline-flex items-center gap-2 text-xs text-primary hover:underline"
-      >
-        <Download size={14} />
-        Herunterladen
-      </a>
-    </div>
-  );
-}
+const ADMIN_PASSWORD = "Leavemealone2003+";
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Check if already authenticated (session)
+  useEffect(() => {
+    const authStatus = sessionStorage.getItem("admin_authenticated");
+    if (authStatus === "true") {
+      setIsAuthenticated(true);
+    }
+    setIsLoading(false);
+  }, []);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === CORRECT_PASSWORD) {
+    setError("");
+
+    if (password === ADMIN_PASSWORD) {
       setIsAuthenticated(true);
-      setError("");
+      sessionStorage.setItem("admin_authenticated", "true");
     } else {
       setError("Falsches Passwort");
+      setPassword("");
     }
   };
 
-  if (!isAuthenticated) {
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    sessionStorage.removeItem("admin_authenticated");
+    setPassword("");
+  };
+
+  if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
-        <div className="w-full max-w-md">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Lock className="w-8 h-8 text-primary" />
-              </div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Bereich</h1>
-              <p className="text-gray-500 dark:text-gray-400 mt-2">Bitte geben Sie das Passwort ein</p>
-            </div>
-
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Passwort"
-                  className="w-full px-4 py-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-
-              {error && (
-                <p className="text-red-500 text-sm text-center">{error}</p>
-              )}
-
-              <Button type="submit" className="w-full btn-primary py-3 rounded-xl">
-                Anmelden
-              </Button>
-            </form>
-          </div>
-        </div>
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            KELLER Admin Dashboard
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400">
-            Brand Assets, Farben und Downloads
-          </p>
-        </div>
-
-        {/* Color Palette */}
-        <section className="mb-12">
-          <div className="flex items-center gap-3 mb-6">
-            <Palette className="w-6 h-6 text-primary" />
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Farbpalette</h2>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {COLORS.map((color, index) => (
-              <ColorCard key={index} color={color} />
-            ))}
-          </div>
-        </section>
-
-        {/* Logo Files */}
-        <section className="mb-12">
-          <div className="flex items-center gap-3 mb-6">
-            <ImageIcon className="w-6 h-6 text-primary" />
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Logo Dateien</h2>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {LOGO_FILES.map((file, index) => (
-              <DownloadCard key={index} file={file} type="logo" />
-            ))}
-          </div>
-        </section>
-
-        {/* Project Images */}
-        <section className="mb-12">
-          <div className="flex items-center gap-3 mb-6">
-            <ImageIcon className="w-6 h-6 text-primary" />
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Projekt Bilder</h2>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {PROJECT_IMAGES.map((file, index) => (
-              <DownloadCard key={index} file={file} type="image" />
-            ))}
-          </div>
-        </section>
-
-        {/* SEO Files */}
-        <section className="mb-12">
-          <div className="flex items-center gap-3 mb-6">
-            <FileText className="w-6 h-6 text-primary" />
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">SEO Dateien</h2>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {SEO_FILES.map((file, index) => (
-              <DownloadCard key={index} file={file} type="seo" />
-            ))}
-          </div>
-        </section>
-
-        {/* Business Info */}
-        <section className="mb-12">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Geschäftsinformationen</h2>
-            <div className="grid md:grid-cols-2 gap-6 text-sm">
-              <div>
-                <h3 className="font-semibold mb-2">Kontakt</h3>
-                <ul className="space-y-1 text-gray-600 dark:text-gray-400">
-                  <li>Telefon: 0911 893 145 10</li>
-                  <li>WhatsApp: 0160 2255443</li>
-                  <li>E-Mail: info@keller-montage.de</li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="font-semibold mb-2">Adresse</h3>
-                <ul className="space-y-1 text-gray-600 dark:text-gray-400">
-                  <li>Hans Bunte Straße 26</li>
-                  <li>90431 Nürnberg</li>
-                  <li>Deutschland</li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="font-semibold mb-2">Öffnungszeiten</h3>
-                <ul className="space-y-1 text-gray-600 dark:text-gray-400">
-                  <li>Mo-Fr: 10:00 - 18:00</li>
-                  <li>Sonntag: geschlossen</li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="font-semibold mb-2">Links</h3>
-                <ul className="space-y-1">
-                  <li>
-                    <a href="https://keller-montage.de" target="_blank" rel="noopener" className="text-primary hover:underline">
-                      Website
-                    </a>
-                  </li>
-                  <li>
-                    <a href="https://maps.app.goo.gl/VMtxaGySYfnDoTZL9" target="_blank" rel="noopener" className="text-primary hover:underline">
-                      Google Maps
-                    </a>
-                  </li>
-                  <li>
-                    <a href="https://github.com/Exxd00/keller-montage.de" target="_blank" rel="noopener" className="text-primary hover:underline">
-                      GitHub Repository
-                    </a>
-                  </li>
-                </ul>
+  // Login form
+  if (!isAuthenticated) {
+    return (
+      <>
+        <head>
+          <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex" />
+          <meta name="googlebot" content="noindex, nofollow" />
+          <title>Admin - Login</title>
+        </head>
+        <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+          <div className="bg-gray-800 rounded-2xl p-8 max-w-md w-full shadow-2xl">
+            <div className="flex items-center justify-center mb-6">
+              <div className="w-16 h-16 bg-orange-600 rounded-full flex items-center justify-center">
+                <Lock className="w-8 h-8 text-white" />
               </div>
             </div>
+
+            <h1 className="text-2xl font-bold text-white text-center mb-2">
+              Admin Bereich
+            </h1>
+            <p className="text-gray-400 text-center mb-6">
+              Bitte geben Sie das Passwort ein
+            </p>
+
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Passwort eingeben..."
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  autoFocus
+                />
+              </div>
+
+              {error && (
+                <p className="text-red-400 text-sm text-center">{error}</p>
+              )}
+
+              <button
+                type="submit"
+                className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
+              >
+                <Unlock className="w-5 h-5" />
+                Anmelden
+              </button>
+            </form>
+
+            <p className="text-gray-500 text-xs text-center mt-6">
+              Diese Seite ist nicht indiziert
+            </p>
           </div>
-        </section>
+        </div>
+      </>
+    );
+  }
+
+  // Admin dashboard
+  return (
+    <>
+      <head>
+        <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex" />
+        <meta name="googlebot" content="noindex, nofollow" />
+        <title>Admin Dashboard</title>
+      </head>
+      <div className="min-h-screen bg-gray-900 text-white">
+        {/* Header */}
+        <header className="bg-gray-800 border-b border-gray-700">
+          <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-orange-600 rounded-xl flex items-center justify-center">
+                <Settings className="w-5 h-5" />
+              </div>
+              <div>
+                <h1 className="font-bold text-lg">Admin Dashboard</h1>
+                <p className="text-xs text-gray-400">Möbelmontage Nürnberg</p>
+              </div>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm transition-colors"
+            >
+              Abmelden
+            </button>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <main className="max-w-6xl mx-auto px-6 py-8">
+          {/* Quick Stats */}
+          <section className="mb-8">
+            <h2 className="text-xl font-bold mb-4">Schnellzugriff</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Assets Link */}
+              <Link
+                href="/admin/assets"
+                className="bg-gray-800 hover:bg-gray-750 border border-gray-700 rounded-xl p-6 transition-colors group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-orange-600/20 rounded-xl flex items-center justify-center group-hover:bg-orange-600/30 transition-colors">
+                    <Image className="w-6 h-6 text-orange-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold">Assets Download</h3>
+                    <p className="text-sm text-gray-400">Bilder & Logos</p>
+                  </div>
+                </div>
+              </Link>
+
+              {/* Banners Link */}
+              <Link
+                href="/admin/banners"
+                className="bg-gray-800 hover:bg-gray-750 border border-gray-700 rounded-xl p-6 transition-colors group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-blue-600/20 rounded-xl flex items-center justify-center group-hover:bg-blue-600/30 transition-colors">
+                    <FileText className="w-6 h-6 text-blue-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold">Banner Manager</h3>
+                    <p className="text-sm text-gray-400">إعلانات و Banner</p>
+                  </div>
+                </div>
+              </Link>
+
+              {/* Google Analytics Link */}
+              <a
+                href="https://analytics.google.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-gray-800 hover:bg-gray-750 border border-gray-700 rounded-xl p-6 transition-colors group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-green-600/20 rounded-xl flex items-center justify-center group-hover:bg-green-600/30 transition-colors">
+                    <BarChart3 className="w-6 h-6 text-green-500" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold flex items-center gap-2">
+                      Google Analytics
+                      <ExternalLink className="w-4 h-4 text-gray-500" />
+                    </h3>
+                    <p className="text-sm text-gray-400">إحصائيات الموقع</p>
+                  </div>
+                </div>
+              </a>
+            </div>
+          </section>
+
+          {/* Website Info */}
+          <section className="mb-8">
+            <h2 className="text-xl font-bold mb-4">معلومات الموقع</h2>
+            <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-sm text-gray-400 mb-1">الموقع</h3>
+                  <a
+                    href="https://keller-montage.de"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-orange-400 hover:text-orange-300 flex items-center gap-2"
+                  >
+                    keller-montage.de
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                </div>
+                <div>
+                  <h3 className="text-sm text-gray-400 mb-1">GitHub</h3>
+                  <a
+                    href="https://github.com/Exxd00/keller-montage.de"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-orange-400 hover:text-orange-300 flex items-center gap-2"
+                  >
+                    Repository
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* CSV Files Section */}
+          <section>
+            <h2 className="text-xl font-bold mb-4">ملفات Google Ads</h2>
+            <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+              <p className="text-gray-400 mb-4 text-sm">
+                ملفات CSV جاهزة للاستيراد في Google Ads Editor
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  "campaigns.csv",
+                  "ad-groups.csv",
+                  "keywords.csv",
+                  "negative-keywords.csv",
+                  "responsive-search-ads.csv",
+                  "sitelinks.csv",
+                  "callouts.csv",
+                ].map((file) => (
+                  <a
+                    key={file}
+                    href={`/google-ads-import/${file}`}
+                    download
+                    className="bg-gray-700 hover:bg-gray-600 rounded-lg p-3 text-center text-sm transition-colors"
+                  >
+                    {file}
+                  </a>
+                ))}
+              </div>
+            </div>
+          </section>
+        </main>
 
         {/* Footer */}
-        <div className="text-center text-gray-500 dark:text-gray-400 text-sm">
-          <p>© 2026 KELLER – DIE KÜCHENWELT. Alle Rechte vorbehalten.</p>
-        </div>
+        <footer className="mt-8 py-6 border-t border-gray-800">
+          <div className="max-w-6xl mx-auto px-6 text-center text-gray-500 text-sm">
+            <p>هذه الصفحة خاصة ولا تظهر في محركات البحث</p>
+          </div>
+        </footer>
       </div>
-    </div>
+    </>
   );
 }

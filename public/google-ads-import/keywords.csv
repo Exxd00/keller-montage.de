@@ -1,0 +1,36 @@
+Account,Campaign,Ad Group,Keyword,Match Type,Max CPC,Final URL
+743-891-1939,DE_Search_Möbelmontage_Nürnberg,AG_Möbelmontage_Exact,[möbelmontage nürnberg],Exact,1.50,https://keller-montage.de
+743-891-1939,DE_Search_Möbelmontage_Nürnberg,AG_Möbelmontage_Exact,[möbelmontage in nürnberg],Exact,1.50,https://keller-montage.de
+743-891-1939,DE_Search_Möbelmontage_Nürnberg,AG_Möbelmontage_Exact,[möbel montage nürnberg],Exact,1.50,https://keller-montage.de
+743-891-1939,DE_Search_Möbelmontage_Nürnberg,AG_Möbelmontage_Exact,[möbelmontage fürth],Exact,1.40,https://keller-montage.de/fuerth
+743-891-1939,DE_Search_Möbelmontage_Nürnberg,AG_Möbelmontage_Exact,[möbelmontage erlangen],Exact,1.40,https://keller-montage.de/erlangen
+743-891-1939,DE_Search_Möbelmontage_Nürnberg,AG_Möbelmontage_Phrase,"möbelmontage nürnberg",Phrase,1.20,https://keller-montage.de
+743-891-1939,DE_Search_Möbelmontage_Nürnberg,AG_Möbelmontage_Phrase,"möbelmontage service nürnberg",Phrase,1.20,https://keller-montage.de
+743-891-1939,DE_Search_Möbelmontage_Nürnberg,AG_Möbelaufbau_Exact,[möbelaufbau nürnberg],Exact,1.50,https://keller-montage.de
+743-891-1939,DE_Search_Möbelmontage_Nürnberg,AG_Möbelaufbau_Exact,[möbel aufbauen lassen nürnberg],Exact,1.60,https://keller-montage.de
+743-891-1939,DE_Search_Möbelmontage_Nürnberg,AG_Möbelaufbau_Exact,[möbel aufbau service nürnberg],Exact,1.50,https://keller-montage.de
+743-891-1939,DE_Search_Möbelmontage_Nürnberg,AG_Möbelaufbau_Exact,[wer baut möbel auf nürnberg],Exact,1.40,https://keller-montage.de
+743-891-1939,DE_Search_Möbelmontage_Nürnberg,AG_Schrank_Montage,[schrank montage nürnberg],Exact,1.30,https://keller-montage.de/service/schrank-montage
+743-891-1939,DE_Search_Möbelmontage_Nürnberg,AG_Schrank_Montage,[schrank aufbauen lassen nürnberg],Exact,1.40,https://keller-montage.de/service/schrank-montage
+743-891-1939,DE_Search_Möbelmontage_Nürnberg,AG_Schrank_Montage,[kleiderschrank montage nürnberg],Exact,1.30,https://keller-montage.de/service/schrank-montage
+743-891-1939,DE_Search_Küchenmontage_Nürnberg,AG_Küchenmontage_Exact,[küchenmontage nürnberg],Exact,1.80,https://keller-montage.de/service/kuechenmontage
+743-891-1939,DE_Search_Küchenmontage_Nürnberg,AG_Küchenmontage_Exact,[küche montieren lassen nürnberg],Exact,1.80,https://keller-montage.de/service/kuechenmontage
+743-891-1939,DE_Search_Küchenmontage_Nürnberg,AG_Küchenmontage_Exact,[küchenmontage fürth],Exact,1.70,https://keller-montage.de/fuerth/kuechenmontage
+743-891-1939,DE_Search_Küchenmontage_Nürnberg,AG_Küchenmontage_Exact,[küchenmontage erlangen],Exact,1.70,https://keller-montage.de/erlangen/kuechenmontage
+743-891-1939,DE_Search_Küchenmontage_Nürnberg,AG_Küchenmontage_Exact,[küche aufbauen lassen],Exact,1.60,https://keller-montage.de/service/kuechenmontage
+743-891-1939,DE_Search_Küchenmontage_Nürnberg,AG_Küche_Aufbauen,[ikea küche montieren lassen nürnberg],Exact,1.80,https://keller-montage.de/service/ikea-kuechenmontage
+743-891-1939,DE_Search_Küchenmontage_Nürnberg,AG_Küche_Aufbauen,[ikea küchenmontage nürnberg],Exact,1.80,https://keller-montage.de/service/ikea-kuechenmontage
+743-891-1939,DE_Search_Küchenmontage_Nürnberg,AG_Küche_Aufbauen,[metod küche aufbauen],Exact,1.50,https://keller-montage.de/service/metod-kuechenmontage
+743-891-1939,DE_Search_Küchenmontage_Nürnberg,AG_Küche_Aufbauen,[küchenmontage kosten],Exact,1.40,https://keller-montage.de/service/kuechenmontage
+743-891-1939,DE_Search_IKEA_Montage_Nürnberg,AG_IKEA_Montage_Exact,[ikea montage nürnberg],Exact,1.60,https://keller-montage.de/service/ikea-montage
+743-891-1939,DE_Search_IKEA_Montage_Nürnberg,AG_IKEA_Montage_Exact,[ikea möbel aufbauen lassen nürnberg],Exact,1.70,https://keller-montage.de/service/ikea-montage
+743-891-1939,DE_Search_IKEA_Montage_Nürnberg,AG_IKEA_Montage_Exact,[ikea aufbauservice nürnberg],Exact,1.60,https://keller-montage.de/service/ikea-montage
+743-891-1939,DE_Search_IKEA_Montage_Nürnberg,AG_IKEA_Montage_Exact,[ikea montage fürth],Exact,1.50,https://keller-montage.de/fuerth/ikea-montage
+743-891-1939,DE_Search_IKEA_Montage_Nürnberg,AG_IKEA_Montage_Exact,[ikea montage erlangen],Exact,1.50,https://keller-montage.de/erlangen/ikea-montage
+743-891-1939,DE_Search_IKEA_Montage_Nürnberg,AG_PAX_Montage,[pax schrank montage nürnberg],Exact,1.40,https://keller-montage.de/service/pax-schrank-montage
+743-891-1939,DE_Search_IKEA_Montage_Nürnberg,AG_PAX_Montage,[pax schrank aufbauen lassen],Exact,1.50,https://keller-montage.de/service/pax-schrank-montage
+743-891-1939,DE_Search_IKEA_Montage_Nürnberg,AG_PAX_Montage,[ikea pax montage],Exact,1.40,https://keller-montage.de/service/pax-schrank-montage
+743-891-1939,DE_Search_IKEA_Montage_Nürnberg,AG_PAX_Montage,[pax kleiderschrank aufbauen],Exact,1.30,https://keller-montage.de/service/pax-schrank-montage
+743-891-1939,DE_Search_IKEA_Montage_Nürnberg,AG_METOD_Montage,[metod küche montage],Exact,1.40,https://keller-montage.de/service/metod-kuechenmontage
+743-891-1939,DE_Search_IKEA_Montage_Nürnberg,AG_METOD_Montage,[ikea metod aufbauen],Exact,1.40,https://keller-montage.de/service/metod-kuechenmontage
+743-891-1939,DE_Search_IKEA_Montage_Nürnberg,AG_METOD_Montage,[metod küche aufbauen lassen],Exact,1.50,https://keller-montage.de/service/metod-kuechenmontage

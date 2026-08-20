@@ -1,54 +1,87 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
-import { FloatingButtons } from "@/components/layout/FloatingButtons";
-import { ContactDialogProvider } from "@/components/ui/contact-confirmation-dialog";
-import { META, BUSINESS } from "@/lib/constants";
-import { GA_MEASUREMENT_ID } from "@/lib/analytics";
+import { Toaster } from "@/components/ui/sonner";
+import { TrackingInitializer } from "@/components/TrackingInitializer";
+import { ConsentAnalytics } from "@/components/ConsentAnalytics";
 
 const inter = Inter({
   subsets: ["latin"],
+  display: "swap",
   variable: "--font-inter",
+  preload: true,
+  fallback: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
 });
 
+// Viewport configuration for PWA and WebView
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f97316" },
+    { media: "(prefers-color-scheme: dark)", color: "#1a1a1a" },
+  ],
+  viewportFit: "cover", // For notch devices
+};
+
 export const metadata: Metadata = {
+  metadataBase: new URL("https://keller-montage.de"),
   title: {
-    default: META.title,
-    template: `%s | ${BUSINESS.fullName}`,
+    default: "Möbelmontage Nürnberg - Professionelle IKEA Montage & Küchenmontage",
+    template: "%s | Möbelmontage Nürnberg",
   },
-  description: META.description,
-  keywords: META.keywords,
-  authors: [{ name: BUSINESS.fullName }],
-  icons: {
-    icon: "/favicon.png",
-    shortcut: "/favicon.png",
-    apple: "/favicon.png",
+  description:
+    "Professionelle Möbelmontage in Nürnberg und Umgebung. IKEA Montage, Küchenmontage, Lieferservice. Schnell, zuverlässig, fair. Jetzt kostenlos anfragen!",
+  keywords: [
+    "Möbelmontage Nürnberg",
+    "IKEA Montage Nürnberg",
+    "Küchenmontage Nürnberg",
+    "Möbelaufbau Nürnberg",
+    "IKEA Küche montieren",
+    "PAX Schrank Montage",
+    "Möbel Lieferung Nürnberg",
+    "Möbelmontage Fürth",
+    "Möbelmontage Erlangen",
+  ],
+  authors: [{ name: "Möbelmontage Nürnberg" }],
+  creator: "Möbelmontage Nürnberg",
+  publisher: "Möbelmontage Nürnberg",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
   },
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Möbelmontage",
+  },
+  applicationName: "Möbelmontage Nürnberg",
   openGraph: {
-    title: META.title,
-    description: META.description,
-    url: `https://${BUSINESS.domain}`,
-    siteName: BUSINESS.fullName,
-    locale: "de_DE",
     type: "website",
+    locale: "de_DE",
+    url: "https://keller-montage.de",
+    siteName: "Möbelmontage Nürnberg",
+    title: "Möbelmontage Nürnberg - Professionelle IKEA Montage & Küchenmontage",
+    description:
+      "Professionelle Möbelmontage in Nürnberg und Umgebung. IKEA Montage, Küchenmontage, Lieferservice. Schnell, zuverlässig, fair.",
     images: [
       {
-        url: "/images/hero-desktop.jpg",
+        url: "/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: BUSINESS.fullName,
+        alt: "Möbelmontage Nürnberg",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: META.title,
-    description: META.description,
-    images: ["/images/hero-desktop.jpg"],
+    title: "Möbelmontage Nürnberg - Professionelle IKEA Montage & Küchenmontage",
+    description:
+      "Professionelle Möbelmontage in Nürnberg und Umgebung. IKEA Montage, Küchenmontage, Lieferservice.",
   },
   robots: {
     index: true,
@@ -62,10 +95,87 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
-    canonical: `https://${BUSINESS.domain}`,
+    canonical: "https://keller-montage.de",
   },
-  verification: {
-    google: "add-your-google-verification-code",
+  other: {
+    "mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "black-translucent",
+    "format-detection": "telephone=no",
+    "msapplication-TileColor": "#f97316",
+    "msapplication-tap-highlight": "no",
+  },
+};
+
+// JSON-LD Schema
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  name: "Möbelmontage Nürnberg",
+  image: "https://keller-montage.de/og-image.jpg",
+  "@id": "https://keller-montage.de",
+  url: "https://keller-montage.de",
+  telephone: "+49 911 48007161",
+  email: "info@mobelmontage-nurnberg.de",
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: "Einsteinring 15",
+    addressLocality: "Nürnberg",
+    addressRegion: "Bayern",
+    postalCode: "90453",
+    addressCountry: "DE",
+  },
+  geo: {
+    "@type": "GeoCoordinates",
+    latitude: 49.4521,
+    longitude: 11.0767,
+  },
+  openingHoursSpecification: [
+    {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+      opens: "08:00",
+      closes: "22:00",
+    },
+  ],
+  sameAs: [],
+  priceRange: "$$",
+  areaServed: [
+    { "@type": "City", name: "Nürnberg" },
+    { "@type": "City", name: "Fürth" },
+    { "@type": "City", name: "Erlangen" },
+    { "@type": "City", name: "Schwabach" },
+    { "@type": "State", name: "Bayern" },
+  ],
+  hasOfferCatalog: {
+    "@type": "OfferCatalog",
+    name: "Möbelmontage Services",
+    itemListElement: [
+      {
+        "@type": "Offer",
+        itemOffered: {
+          "@type": "Service",
+          name: "Möbelmontage",
+          description: "Professioneller Aufbau aller Möbelarten",
+        },
+      },
+      {
+        "@type": "Offer",
+        itemOffered: {
+          "@type": "Service",
+          name: "Küchenmontage",
+          description: "Komplette Kücheninstallation inkl. Geräte",
+        },
+      },
+      {
+        "@type": "Offer",
+        itemOffered: {
+          "@type": "Service",
+          name: "Lieferungen",
+          description: "Transport und Lieferung von Möbeln",
+        },
+      },
+    ],
   },
 };
 
@@ -74,275 +184,88 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    "name": BUSINESS.fullName,
-    "description": META.description,
-    "url": `https://${BUSINESS.domain}`,
-    "telephone": BUSINESS.phone,
-    "email": BUSINESS.email,
-    "address": {
-      "@type": "PostalAddress",
-      "streetAddress": BUSINESS.address,
-      "addressLocality": BUSINESS.city,
-      "postalCode": BUSINESS.postalCode,
-      "addressCountry": "DE"
-    },
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": "5.0",
-      "reviewCount": "120"
-    }
-  };
-
   return (
-    <html lang="de" suppressHydrationWarning>
+    <html lang="de" suppressHydrationWarning className={inter.variable}>
       <head>
-        {/* Google tag (gtag.js) - Google Analytics 4 */}
-        <Script
-          src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
-          strategy="afterInteractive"
-        />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', '${GA_MEASUREMENT_ID}', {
-              page_title: document.title,
-              page_location: window.location.href,
-              send_page_view: true
-            });
+        {/* Minimal Critical CSS - Inline for faster first paint */}
+        <style dangerouslySetInnerHTML={{ __html: `
+          :root{--primary:24 95% 53%;--background:0 0% 100%;--foreground:20 10% 10%}
+          .dark{--background:20 14% 8%;--foreground:30 20% 98%}
+          html{overflow-y:scroll;visibility:visible}
+          body{margin:0;background:hsl(var(--background));color:hsl(var(--foreground));font-family:var(--font-inter),system-ui,sans-serif}
+          /* Safe area insets for notch devices */
+          body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+        `}} />
 
-            // ============================================
-            // KELLER MONTAGE - COMPREHENSIVE EVENT TRACKING
-            // Analytics ID: ${GA_MEASUREMENT_ID}
-            // ============================================
-            //
-            // MAIN CONVERSION EVENTS (4 Primary):
-            // 1. thank_you_page - When user reaches thank you page
-            // 2. form_submit - When contact form is submitted
-            // 3. whatsapp_click - When WhatsApp button is clicked
-            // 4. click_to_call - When phone number is clicked
-            //
-            // ============================================
+        {/* DNS Prefetch for essential resources */}
+        <link rel="dns-prefetch" href="https://images.unsplash.com" />
+        <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
 
-            // Global tracking function
-            window.trackEvent = function(eventName, eventParams) {
-              if (typeof gtag !== 'undefined') {
-                gtag('event', eventName, eventParams);
-                console.log('📊 Event tracked:', eventName, eventParams);
-              }
-            };
-
-            // ============================================
-            // 1. PHONE CALL TRACKING (Lead Generation)
-            // NOTE: Now handled by ContactDialogProvider with confirmation
-            // Only tracks AFTER user confirms the dialog
-            // ============================================
-            // Phone/WhatsApp tracking is now done via contact-confirmation-dialog.tsx
-            // Events tracked after confirmation: phone_call_confirmed, whatsapp_confirmed
-
-            // ============================================
-            // 2. GCLID TRACKING (Google Ads Conversion)
-            // Save GCLID from URL for attribution
-            // ============================================
-            (function() {
-              var urlParams = new URLSearchParams(window.location.search);
-              var gclid = urlParams.get('gclid');
-              if (gclid) {
-                localStorage.setItem('gclid', gclid);
-                localStorage.setItem('gclid_timestamp', Date.now().toString());
-                console.log('🎯 GCLID saved:', gclid);
-              }
-            })();
-
-            // ============================================
-            // 3. SERVICE CARD CLICKS (Engagement)
-            // ============================================
-            document.addEventListener('click', function(e) {
-              var serviceCard = e.target.closest('[data-service]');
-              if (serviceCard) {
-                var serviceName = serviceCard.getAttribute('data-service');
-
-                gtag('event', 'select_content', {
-                  event_category: 'Engagement',
-                  event_label: serviceName,
-                  content_type: 'service',
-                  item_id: serviceName
-                });
-
-                gtag('event', 'service_interest', {
-                  event_category: 'Services',
-                  event_label: serviceName,
-                  service_name: serviceName
-                });
-              }
-            });
-
-            // ============================================
-            // 4. CTA BUTTON CLICKS (Engagement)
-            // ============================================
-            document.addEventListener('click', function(e) {
-              var ctaButton = e.target.closest('[data-cta]');
-              if (ctaButton) {
-                var ctaName = ctaButton.getAttribute('data-cta');
-                var ctaLocation = ctaButton.getAttribute('data-cta-location') || 'unknown';
-
-                gtag('event', 'cta_click', {
-                  event_category: 'Engagement',
-                  event_label: ctaName,
-                  cta_name: ctaName,
-                  cta_location: ctaLocation,
-                  page_location: window.location.pathname
-                });
-              }
-            });
-
-            // ============================================
-            // 5. FAQ INTERACTION TRACKING
-            // ============================================
-            document.addEventListener('click', function(e) {
-              var faqItem = e.target.closest('[data-faq]');
-              if (faqItem) {
-                var question = faqItem.getAttribute('data-faq');
-
-                gtag('event', 'faq_interaction', {
-                  event_category: 'Engagement',
-                  event_label: question,
-                  content_type: 'faq'
-                });
-              }
-            });
-
-            // ============================================
-            // 6. SCROLL DEPTH TRACKING (25%, 50%, 75%, 90%, 100%)
-            // ============================================
-            var scrollDepths = [25, 50, 75, 90, 100];
-            var scrolledDepths = [];
-
-            window.addEventListener('scroll', function() {
-              var scrollPercent = Math.round((window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100);
-
-              scrollDepths.forEach(function(depth) {
-                if (scrollPercent >= depth && scrolledDepths.indexOf(depth) === -1) {
-                  scrolledDepths.push(depth);
-                  gtag('event', 'scroll_depth', {
-                    event_category: 'Engagement',
-                    event_label: depth + '%',
-                    value: depth,
-                    percent_scrolled: depth
-                  });
-                }
-              });
-            });
-
-            // ============================================
-            // 7. TIME ON PAGE TRACKING (30s, 60s, 120s, 300s)
-            // ============================================
-            var pageStartTime = Date.now();
-            var timeIntervals = [30, 60, 120, 300];
-            var trackedIntervals = [];
-
-            setInterval(function() {
-              var timeOnPage = Math.floor((Date.now() - pageStartTime) / 1000);
-
-              timeIntervals.forEach(function(interval) {
-                if (timeOnPage >= interval && trackedIntervals.indexOf(interval) === -1) {
-                  trackedIntervals.push(interval);
-                  gtag('event', 'time_on_page', {
-                    event_category: 'Engagement',
-                    event_label: interval + ' seconds',
-                    value: interval,
-                    engaged_time: interval
-                  });
-                }
-              });
-            }, 5000);
-
-            // ============================================
-            // 8. FORM FIELD FOCUS TRACKING
-            // ============================================
-            document.addEventListener('focus', function(e) {
-              if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
-                var fieldName = e.target.name || e.target.id || 'unknown';
-                var formElement = e.target.closest('form');
-                var formName = formElement ? (formElement.getAttribute('name') || formElement.getAttribute('id') || 'contact_form') : 'contact_form';
-
-                gtag('event', 'form_field_focus', {
-                  event_category: 'Form',
-                  event_label: fieldName,
-                  field_name: fieldName,
-                  form_name: formName
-                });
-              }
-            }, true);
-
-            // ============================================
-            // 9. OUTBOUND LINK TRACKING
-            // ============================================
-            document.addEventListener('click', function(e) {
-              var link = e.target.closest('a[href^="http"]');
-              if (link && !link.href.includes(window.location.hostname)) {
-                gtag('event', 'outbound_link', {
-                  event_category: 'Outbound',
-                  event_label: link.href,
-                  outbound_url: link.href,
-                  transport_type: 'beacon'
-                });
-              }
-            });
-
-            // ============================================
-            // 10. PAGE VISIBILITY TRACKING
-            // ============================================
-            document.addEventListener('visibilitychange', function() {
-              if (document.visibilityState === 'hidden') {
-                var timeOnPage = Math.floor((Date.now() - pageStartTime) / 1000);
-                gtag('event', 'page_exit', {
-                  event_category: 'Engagement',
-                  event_label: 'Page Hidden',
-                  time_spent: timeOnPage
-                });
-              }
-            });
-
-            // ============================================
-            // 11. ERROR TRACKING
-            // ============================================
-            window.addEventListener('error', function(e) {
-              gtag('event', 'javascript_error', {
-                event_category: 'Error',
-                event_label: e.message,
-                error_message: e.message,
-                error_file: e.filename,
-                error_line: e.lineno
-              });
-            });
-
-            console.log('✅ KELLER MONTAGE Analytics Initialized - ID: ${GA_MEASUREMENT_ID}');
-            console.log('📊 Tracking: Phone Calls, WhatsApp, Form Submissions, Thank You Page');
-          `}
-        </Script>
+        {/* JSON-LD */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+
+        {/* Favicon & PWA Icons */}
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="icon" href="/favicon.ico" sizes="32x32" />
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+        <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png" />
+        <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-192x192.png" />
+
+        {/* Splash screens for iOS */}
+        <link rel="apple-touch-startup-image" href="/icons/icon-512x512.png" />
+
+        {/* WebView / Hybrid App Meta */}
+        <meta name="HandheldFriendly" content="true" />
+        <meta name="MobileOptimized" content="width" />
+        <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
       </head>
-      <body className={`${inter.variable} font-sans antialiased`}>
-        <ContactDialogProvider>
-          <a href="#main-content" className="skip-link">
-            Zum Hauptinhalt springen
-          </a>
-          <Header />
-          <main id="main-content" className="min-h-screen">
-            {children}
-          </main>
-          <Footer />
-          <FloatingButtons />
-        </ContactDialogProvider>
+      <body className={`antialiased ${inter.className}`}>
+        {/* Theme initialization script - runs before React hydration to prevent flash */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.classList.add('dark')}catch(e){}})()`,
+          }}
+        />
+
+        {/* Service Worker Registration */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                    console.log('SW registered:', registration.scope);
+                  }).catch(function(error) {
+                    console.log('SW registration failed:', error);
+                  });
+                });
+              }
+            `,
+          }}
+        />
+
+        {/* Skip to main content link for accessibility */}
+        <a href="#main-content" className="skip-link">
+          Zum Hauptinhalt springen
+        </a>
+        {children}
+        <Toaster />
+        <TrackingInitializer />
+        <ConsentAnalytics />
       </body>
     </html>
   );
+}
+
+// Extend Window interface for gtag
+declare global {
+  interface Window {
+    gtag?: (...args: unknown[]) => void;
+    dataLayer?: unknown[];
+  }
 }

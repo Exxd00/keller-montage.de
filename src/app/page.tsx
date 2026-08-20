@@ -1,58 +1,77 @@
+"use client";
+
+import { Suspense } from "react";
 import dynamic from "next/dynamic";
-import { HeroSection } from "@/components/sections/HeroSection";
-import { ServicesCardsSection } from "@/components/sections/ServicesCardsSection";
+import Header from "@/components/layout/Header";
+import Footer from "@/components/layout/Footer";
+import HeroSection from "@/components/sections/HeroSection";
+import AnalyticsProvider from "@/components/AnalyticsProvider";
 
-// Lazy load heavy components for better mobile performance
-const StatsSection = dynamic(() => import("@/components/sections/StatsSection").then(mod => ({ default: mod.StatsSection })), {
-  loading: () => <div className="py-12 bg-white dark:bg-[#0F1115]" />,
+// Lazy load below-the-fold sections - SSR: false for faster initial load
+const FloatingButtons = dynamic(() => import("@/components/layout/FloatingButtons"), {
+  ssr: false,
 });
 
-const WhyUsSection = dynamic(() => import("@/components/sections/WhyUsSection").then(mod => ({ default: mod.WhyUsSection })), {
-  loading: () => <div className="py-12" />,
+const WhyUs = dynamic(() => import("@/components/sections/WhyUs"), {
+  ssr: false,
+  loading: () => <div className="h-64 bg-muted/30 animate-pulse rounded-2xl mx-4" />,
 });
 
-const ProjectsSection = dynamic(() => import("@/components/sections/ProjectsSection").then(mod => ({ default: mod.ProjectsSection })), {
-  loading: () => <div className="py-12" />,
+const HowWeWork = dynamic(() => import("@/components/sections/HowWeWork"), {
+  ssr: false,
+  loading: () => <div className="h-64 bg-muted/30 animate-pulse rounded-2xl mx-4" />,
 });
 
-const QualitySection = dynamic(() => import("@/components/sections/QualitySection").then(mod => ({ default: mod.QualitySection })), {
-  loading: () => <div className="py-12" />,
+const Testimonials = dynamic(() => import("@/components/sections/Testimonials"), {
+  ssr: false,
+  loading: () => <div className="h-64 bg-muted/30 animate-pulse rounded-2xl mx-4" />,
 });
 
-const StepsSection = dynamic(() => import("@/components/sections/StepsSection").then(mod => ({ default: mod.StepsSection })), {
-  loading: () => <div className="py-12" />,
+const FAQSection = dynamic(() => import("@/components/sections/FAQSection"), {
+  ssr: false,
+  loading: () => <div className="h-64 bg-muted/30 animate-pulse rounded-2xl mx-4" />,
 });
 
-const TestimonialsSection = dynamic(() => import("@/components/sections/TestimonialsSection").then(mod => ({ default: mod.TestimonialsSection })), {
-  loading: () => <div className="py-12" />,
+const QuickContactForm = dynamic(() => import("@/components/sections/QuickContactForm"), {
+  ssr: false,
+  loading: () => <div className="h-96 bg-muted/30 animate-pulse rounded-2xl mx-4" />,
 });
 
-const FAQSection = dynamic(() => import("@/components/sections/FAQSection").then(mod => ({ default: mod.FAQSection })), {
-  loading: () => <div className="py-12" />,
-});
-
-const ContactForm = dynamic(() => import("@/components/sections/ContactForm").then(mod => ({ default: mod.ContactForm })), {
-  loading: () => <div className="py-12" />,
-});
-
-const CTASection = dynamic(() => import("@/components/sections/CTASection").then(mod => ({ default: mod.CTASection })), {
-  loading: () => <div className="py-12" />,
+const CTASection = dynamic(() => import("@/components/sections/CTASection"), {
+  ssr: false,
+  loading: () => <div className="h-64 bg-muted/30 animate-pulse rounded-2xl mx-4" />,
 });
 
 export default function HomePage() {
   return (
-    <>
-      <HeroSection />
-      <ServicesCardsSection />
-      <StatsSection />
-      <WhyUsSection />
-      <ProjectsSection />
-      <QualitySection />
-      <StepsSection />
-      <TestimonialsSection />
-      <FAQSection />
-      <ContactForm />
-      <CTASection />
-    </>
+    <Suspense fallback={null}>
+      <AnalyticsProvider>
+        <Header />
+        <main id="main-content">
+        {/* 1. Hero Section - Services, Pricing, CTAs */}
+        <HeroSection />
+
+        {/* 2. Why Choose Us - Build Trust */}
+        <WhyUs />
+
+        {/* 3. How We Work - 3 Steps Process */}
+        <HowWeWork />
+
+        {/* 4. Testimonials - Social Proof */}
+        <Testimonials />
+
+        {/* 5. FAQ Section */}
+        <FAQSection />
+
+        {/* 6. Contact Form */}
+        <QuickContactForm />
+
+        {/* 7. Final CTA */}
+        <CTASection />
+      </main>
+      <Footer />
+        <FloatingButtons />
+      </AnalyticsProvider>
+    </Suspense>
   );
 }

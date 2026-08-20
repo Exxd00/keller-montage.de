@@ -1,82 +1,66 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ArrowRight, Phone, MessageCircle, Check } from "lucide-react";
+import { Phone, ArrowRight, Star, CheckCircle, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { BUSINESS } from "@/lib/constants";
+import { businessInfo } from "@/lib/data";
 
-export function CTASection() {
-  const router = useRouter();
-
-  const handleContactClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-
-    // Check if we're on the contact page
-    const contactForm = document.getElementById("kontakt-form");
-    if (contactForm) {
-      contactForm.scrollIntoView({ behavior: "smooth", block: "start" });
-    } else {
-      // Navigate to contact page, then scroll
-      router.push("/kontakt");
-      setTimeout(() => {
-        const form = document.getElementById("kontakt-form");
-        if (form) {
-          form.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      }, 500);
-    }
-  };
-
+export default function CTASection() {
   return (
-    <section className="section-padding bg-gradient-to-br from-primary/5 via-[#FCFAF8] to-primary/10 dark:from-primary/10 dark:via-[#0F1115] dark:to-primary/15">
-      <div className="container-max">
-        <div className="text-center max-w-3xl mx-auto">
-          <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-3 text-[#1F2430] dark:text-white">
-            Jetzt Küchenmontage in {BUSINESS.city} anfragen
-          </h2>
-          <p className="text-[#5F6673] dark:text-[#AAB0BC] mb-6 text-base md:text-lg">
-            Schnell, transparent und professionell – wir montieren Ihre Küche zuverlässig zum Festpreis.
-          </p>
+    <section className="section-padding bg-gradient-to-br from-primary/5 via-primary/10 to-orange-500/5 relative overflow-hidden">
+      {/* Background decoration */}
+      <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
+      <div className="absolute bottom-0 left-0 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl" />
 
-          {/* Quick Benefits - Küchenmontage fokus */}
-          <div className="flex flex-wrap justify-center gap-4 md:gap-8 mb-8">
-            <div className="flex items-center gap-2">
-              <Check className="w-5 h-5 text-primary" />
-              <span className="text-[#1F2430] dark:text-white">Küchenmontage ab 149€</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Check className="w-5 h-5 text-primary" />
-              <span className="text-[#1F2430] dark:text-white">Termine in 24-48h</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Check className="w-5 h-5 text-primary" />
-              <span className="text-[#1F2430] dark:text-white">4.9/5 Kundenzufriedenheit</span>
-            </div>
+      <div className="container-max relative z-10">
+        <div className="max-w-4xl mx-auto text-center">
+          {/* Headline with Urgency */}
+          <h2 className="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold mb-6 lg:mb-8">
+            Jetzt Termin sichern – bevor die Woche ausgebucht ist
+          </h2>
+
+          {/* 4 Key Benefits */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-8 lg:mb-10">
+            {[
+              "Möbelmontage ab 59€",
+              "Küchenmontage ab 149€",
+              "4.9/5 Kundenzufriedenheit",
+              "12+ Jahre Erfahrung",
+            ].map((benefit, index) => (
+              <div key={index} className="flex items-center justify-center gap-2 bg-white/50 dark:bg-gray-800/50 px-3 lg:px-4 py-2 lg:py-3 rounded-lg lg:rounded-xl">
+                <CheckCircle className="w-4 h-4 lg:w-5 lg:h-5 text-primary flex-shrink-0" />
+                <span className="text-sm lg:text-base font-medium">{benefit}</span>
+              </div>
+            ))}
           </div>
 
-          {/* CTA Button */}
-          <Link href="/kontakt" onClick={handleContactClick} className="block mb-6">
-            <Button size="lg" className="btn-primary px-8 py-6 text-lg rounded-xl shimmer">
-              Jetzt Festpreis sichern
-              <ArrowRight className="ml-2 w-5 h-5" />
-            </Button>
-          </Link>
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row justify-center gap-3 lg:gap-4 mb-6 lg:mb-8">
+            <Link href="/kontakt" className="no-underline">
+              <Button
+                size="lg"
+                className="btn-primary shimmer px-8 lg:px-12 py-6 lg:py-7 rounded-xl lg:rounded-2xl w-full sm:w-auto text-base md:text-lg lg:text-xl"
+              >
+                Kostenloses Angebot anfordern
+                <ArrowRight className="w-5 h-5 lg:w-6 lg:h-6 ml-2" />
+              </Button>
+            </Link>
+          </div>
 
           {/* Contact Options */}
-          <div className="flex items-center justify-center gap-4 flex-wrap">
+          <div className="flex flex-wrap items-center justify-center gap-4">
             <a
-              href={`tel:${BUSINESS.phone}`}
-              className="inline-flex items-center gap-2 text-[#1F2430] dark:text-white hover:text-primary transition-colors"
+              href={`tel:${businessInfo.phone}`}
+              className="inline-flex items-center gap-2 text-foreground hover:text-primary font-medium transition-colors no-underline"
             >
-              <Phone className="w-5 h-5" />
-              <span>{BUSINESS.phoneDisplay}</span>
+              <Phone className="w-5 h-5 text-primary" />
+              <span>{businessInfo.phone}</span>
             </a>
             <a
-              href={`https://wa.me/${BUSINESS.whatsapp}?text=${encodeURIComponent(BUSINESS.whatsappMessage)}`}
+              href={`https://wa.me/${businessInfo.whatsapp.replace(/\D/g, "" )}?text=Hallo, ich interessiere mich für Ihre Möbelmontage-Dienste.`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-[#25D366] hover:text-[#1da851] transition-colors"
+              className="inline-flex items-center gap-2 text-green-600 hover:text-green-700 font-medium transition-colors no-underline"
             >
               <MessageCircle className="w-5 h-5" />
               <span>WhatsApp</span>
